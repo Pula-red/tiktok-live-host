@@ -10,19 +10,69 @@ $current_user = get_logged_in_user();
 // Get seller dashboard stats
 $db = getDB();
 
-// Get today's date
-$today = date('Y-m-d');
-$view_date = $_GET['date'] ?? $today;
+// Get today's date with different cutoffs based on what user submitted
+// 3-hour shifts: Reset at 5:00 AM (5 AM - 5 AM cycle)
+// 4-hour shifts: Reset at 6:00 AM (6 AM - 6 AM cycle)
+$current_hour = (int)date('H');
+$current_time = date('H:i:s');
 
-// Check if user already has attendance for today
+// First, check what duration the user submitted (if any)
 $stmt = $db->prepare("
-    SELECT COUNT(*) as attendance_count 
-    FROM seller_attendance 
-    WHERE seller_id = ? AND attendance_date = ? AND status != 'cancelled'
+    SELECT ats.duration_hours, a.attendance_date
+    FROM attendance a
+    LEFT JOIN attendance_time_slots ats ON a.time_slot = ats.id
+    WHERE a.seller_id = ? AND a.status != 'cancelled'
+    ORDER BY a.attendance_date DESC, a.created_at DESC
+    LIMIT 1
 ");
-$stmt->execute([$current_user['id'], $today]);
-$today_attendance_count = $stmt->fetchColumn();
-$has_attendance_today = $today_attendance_count > 0;
+$stmt->execute([$current_user['id']]);
+$last_attendance = $stmt->fetch();
+
+// Determine the appropriate reset time based on last submitted duration
+if ($last_attendance) {
+    $last_duration = (int)$last_attendance['duration_hours'];
+    
+    if ($last_duration == 3) {
+        // User submitted 3-hour shift, use 5 AM reset
+        $reset_hour = 5;
+        $reset_time_text = "5:00 AM";
+    } else {
+        // User submitted 4-hour shift (or other), use 6 AM reset
+        $reset_hour = 6;
+        $reset_time_text = "6:00 AM";
+    }
+    
+    // Calculate today based on the user's submitted duration reset time
+    if ($current_hour < $reset_hour) {
+        $today = date('Y-m-d', strtotime('-1 day'));
+    } else {
+        $today = date('Y-m-d');
+    }
+    
+    // Check if user has attendance for today (based on their duration's reset time)
+    $stmt = $db->prepare("
+        SELECT COUNT(*) as attendance_count 
+        FROM attendance a
+        WHERE a.seller_id = ? AND a.attendance_date = ? AND a.status != 'cancelled'
+    ");
+    $stmt->execute([$current_user['id'], $today]);
+    $has_attendance_today = $stmt->fetchColumn() > 0;
+} else {
+    // No previous attendance, use default 5 AM reset (earliest slot)
+    $reset_hour = 5;
+    $reset_time_text = "5:00 AM";
+    
+    if ($current_hour < 5) {
+        $today = date('Y-m-d', strtotime('-1 day'));
+    } else {
+        $today = date('Y-m-d');
+    }
+    
+    $has_attendance_today = false;
+}
+
+// Force view date to always be today - users can only submit attendance for current date
+$view_date = $today;
 
 // Check for successful submission
 $attendance_submitted = isset($_SESSION['attendance_submitted']) && $_SESSION['attendance_submitted'] === true;
@@ -30,19 +80,12 @@ if ($attendance_submitted) {
     unset($_SESSION['attendance_submitted']);
 }
 
-// Validate the view date
-if ($view_date < $today) {
-    $view_date = $today; // Don't allow viewing past dates
-} elseif ($view_date > date('Y-m-d', strtotime('+30 days'))) {
-    $view_date = date('Y-m-d', strtotime('+30 days')); // Don't allow viewing too far in future
-}
-
 // Get attendance data for the viewed date
 $stmt = $db->prepare("
-    SELECT sa.*, ats.name as slot_name, ats.duration_hours, ats.start_time, ats.end_time
-    FROM seller_attendance sa
-    JOIN attendance_time_slots ats ON sa.time_slot_id = ats.id
-    WHERE sa.seller_id = ? AND sa.attendance_date = ?
+    SELECT a.*, ats.name as slot_name, ats.duration_hours, ats.start_time, ats.end_time
+    FROM attendance a
+    LEFT JOIN attendance_time_slots ats ON a.time_slot = ats.id
+    WHERE a.seller_id = ? AND a.attendance_date = ?
     ORDER BY ats.start_time
 ");
 $stmt->execute([$current_user['id'], $view_date]);
@@ -61,16 +104,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $attendance_date = $_POST['attendance_date'] ?? $today;
         $custom_slot_data = $_POST['custom_slot_data'] ?? '';
         
-        // Validate that the date is not in the past
-        if ($attendance_date < $today) {
-            $error_message = "You cannot schedule for past dates. Please select today or a future date.";
-        } elseif ($attendance_date > date('Y-m-d', strtotime('+30 days'))) {
-            $error_message = "You can only schedule up to 30 days in advance.";
-        } elseif ($slot_id && $attendance_date && $custom_slot_data) {
+        // STRICT VALIDATION: Users can ONLY submit for today's date
+        // Force attendance date to be today - ignore any other dates from the form
+        $attendance_date = $today;
+        
+        if ($slot_id && $attendance_date && $custom_slot_data) {
             try {
                 $slot_data = json_decode($custom_slot_data, true);
                 
-                if ($slot_data && isset($slot_data['duration'], $slot_data['start_time'], $slot_data['end_time'], $slot_data['name'])) {
+                    if ($slot_data && isset($slot_data['duration'], $slot_data['start_time'], $slot_data['end_time'], $slot_data['name'])) {
                     // First, check if a time slot with these exact times already exists
                     $stmt = $db->prepare("
                         SELECT id FROM attendance_time_slots 
@@ -98,8 +140,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     
                     // Check if this seller already has this slot scheduled for the same date
                     $stmt = $db->prepare("
-                        SELECT id FROM seller_attendance 
-                        WHERE seller_id = ? AND attendance_date = ? AND time_slot_id = ?
+                        SELECT id FROM attendance 
+                        WHERE seller_id = ? AND attendance_date = ? AND time_slot = ?
                     ");
                     $stmt->execute([$current_user['id'], $attendance_date, $time_slot_id]);
                     $existing_attendance = $stmt->fetch();
@@ -107,19 +149,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     if ($existing_attendance) {
                         $error_message = "You have already scheduled this time slot for the selected date.";
                     } else {
-                        // Schedule the attendance
-                        $stmt = $db->prepare("
-                            INSERT INTO seller_attendance (seller_id, attendance_date, time_slot_id, status)
-                            VALUES (?, ?, ?, 'scheduled')
-                        ");
-                        $stmt->execute([$current_user['id'], $attendance_date, $time_slot_id]);
-                        
-                        // Set session flag for successful submission
-                        $_SESSION['attendance_submitted'] = true;
-                        
-                        // Redirect to prevent form resubmission
-                        header('Location: ' . $_SERVER['REQUEST_URI']);
-                        exit;
+                        // Handle solds and photo upload (photo is required)
+                        $solds_qty = isset($_POST['solds']) ? (int)$_POST['solds'] : 0;
+                        $photo_path = null;
+                        if (!isset($_FILES['sold_photo']) || $_FILES['sold_photo']['error'] !== UPLOAD_ERR_OK) {
+                            $error_message = "Please upload your total sold photo before submitting.";
+                            $photo_error = $error_message;
+                        } else {
+                            $upload_dir = __DIR__ . '/../uploads/attendance/';
+                            if (!file_exists($upload_dir)) mkdir($upload_dir, 0755, true);
+                            $ext = pathinfo($_FILES['sold_photo']['name'], PATHINFO_EXTENSION);
+                            $filename = 'sold_' . $current_user['id'] . '_' . time() . '.' . $ext;
+                            $dest = $upload_dir . $filename;
+                            if (move_uploaded_file($_FILES['sold_photo']['tmp_name'], $dest)) {
+                                $photo_path = 'uploads/attendance/' . $filename;
+                            } else {
+                                $error_message = "Failed to save uploaded photo. Please try again.";
+                                $photo_error = $error_message;
+                            }
+                        }
+
+                            // Compute hours_worked from slot start/end times (handle overnight shifts)
+                            $hoursWorked = null;
+                            if (!empty($slot_data['start_time']) && !empty($slot_data['end_time'])) {
+                                try {
+                                    $startDt = new DateTime($attendance_date . ' ' . $slot_data['start_time']);
+                                    $endDt = new DateTime($attendance_date . ' ' . $slot_data['end_time']);
+                                    if ($endDt <= $startDt) {
+                                        // assume end time is next day (overnight shift)
+                                        $endDt->modify('+1 day');
+                                    }
+                                    $diffSeconds = $endDt->getTimestamp() - $startDt->getTimestamp();
+                                    $hoursWorked = round($diffSeconds / 3600, 2);
+                                } catch (Exception $e) {
+                                    // if anything goes wrong, leave hoursWorked as null
+                                    $hoursWorked = null;
+                                }
+                            }
+
+                        // Only insert if there is no validation error
+                        if (empty($error_message)) {
+                            // Schedule the attendance into new table (persist hours_worked)
+                            // Set status to 'completed' since user is submitting with sold data and photo
+                            $stmt = $db->prepare("
+                                INSERT INTO attendance (seller_id, attendance_date, duration, time_slot, solds_quantity, total_sold_photo, hours_worked, status)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, 'completed')
+                            ");
+                            $stmt->execute([$current_user['id'], $attendance_date, $slot_data['duration'] . '-hour', $time_slot_id, $solds_qty, $photo_path, $hoursWorked]);
+
+                            // Set session flag for successful submission
+                            $_SESSION['attendance_submitted'] = true;
+
+                            // Redirect to prevent form resubmission
+                            header('Location: ' . $_SERVER['REQUEST_URI']);
+                            exit;
+                        }
                     }
                 } else {
                     $error_message = "Invalid slot data provided.";
@@ -130,35 +214,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $error_message = "Please select both duration and time slot.";
         }
-    } elseif ($action === 'check_in') {
-        $attendance_id = $_POST['attendance_id'] ?? '';
-        if ($attendance_id) {
-            $stmt = $db->prepare("
-                UPDATE seller_attendance 
-                SET status = 'checked_in', check_in_time = CURRENT_TIME, updated_at = CURRENT_TIMESTAMP
-                WHERE id = ? AND seller_id = ?
-            ");
-            $stmt->execute([$attendance_id, $current_user['id']]);
-            $success_message = "Checked in successfully!";
-        }
-    } elseif ($action === 'check_out') {
-        $attendance_id = $_POST['attendance_id'] ?? '';
-        if ($attendance_id) {
-            $stmt = $db->prepare("
-                UPDATE seller_attendance 
-                SET status = 'completed', check_out_time = CURRENT_TIME,
-                    actual_hours = TIME_TO_SEC(TIMEDIFF(CURRENT_TIME, check_in_time)) / 3600,
-                    updated_at = CURRENT_TIMESTAMP
-                WHERE id = ? AND seller_id = ?
-            ");
-            $stmt->execute([$attendance_id, $current_user['id']]);
-            $success_message = "Checked out successfully!";
-        }
     } elseif ($action === 'cancel_slot') {
         $attendance_id = $_POST['attendance_id'] ?? '';
         if ($attendance_id) {
             $stmt = $db->prepare("
-                UPDATE seller_attendance 
+                UPDATE attendance 
                 SET status = 'cancelled', updated_at = CURRENT_TIMESTAMP
                 WHERE id = ? AND seller_id = ? AND status = 'scheduled'
             ");
@@ -169,10 +229,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     // Refresh attendance data after action
     $stmt = $db->prepare("
-        SELECT sa.*, ats.name as slot_name, ats.duration_hours, ats.start_time, ats.end_time
-        FROM seller_attendance sa
-        JOIN attendance_time_slots ats ON sa.time_slot_id = ats.id
-        WHERE sa.seller_id = ? AND sa.attendance_date = ?
+        SELECT a.*, ats.name as slot_name, ats.duration_hours, ats.start_time, ats.end_time
+        FROM attendance a
+        LEFT JOIN attendance_time_slots ats ON a.time_slot = ats.id
+        WHERE a.seller_id = ? AND a.attendance_date = ?
         ORDER BY ats.start_time
     ");
     $stmt->execute([$current_user['id'], $view_date]);
@@ -181,11 +241,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Get upcoming schedule (next 7 days)
 $stmt = $db->prepare("
-    SELECT sa.*, ats.name as slot_name, ats.duration_hours, ats.start_time, ats.end_time
-    FROM seller_attendance sa
-    JOIN attendance_time_slots ats ON sa.time_slot_id = ats.id
-    WHERE sa.seller_id = ? AND sa.attendance_date BETWEEN ? AND DATE_ADD(?, INTERVAL 7 DAY)
-    ORDER BY sa.attendance_date, ats.start_time
+    SELECT a.*, ats.name as slot_name, ats.duration_hours, ats.start_time, ats.end_time
+    FROM attendance a
+    LEFT JOIN attendance_time_slots ats ON a.time_slot = ats.id
+    WHERE a.seller_id = ? AND a.attendance_date BETWEEN ? AND DATE_ADD(?, INTERVAL 7 DAY)
+    ORDER BY a.attendance_date, ats.start_time
 ");
 $stmt->execute([$current_user['id'], $today, $today]);
 $upcoming_schedule = $stmt->fetchAll();
@@ -242,8 +302,26 @@ include 'layout/header.php';
                             <div class="info-content-compact">
                                 <span class="info-icon">🕐</span>
                                 <div class="info-text">
-                                    <p class="next-date">Next submission available tomorrow, <strong><?php echo date('F j, Y', strtotime('+1 day')); ?></strong></p>
-                                    <p class="thank-you">Thank you for your participation!</p>
+                                    <?php 
+                                    // Calculate next submission time based on submitted duration's reset time
+                                    // Since user has already submitted for "today" (based on their reset time),
+                                    // the next submission is always at the next reset time
+                                    $current_hour = (int)date('H');
+                                    
+                                    if ($current_hour < $reset_hour) {
+                                        // Before reset time - but they already submitted for "today"
+                                        // So next submission is at the reset time (which marks the start of the actual calendar day)
+                                        $actual_calendar_date = date('Y-m-d');
+                                        $next_date = date('F j, Y', strtotime($actual_calendar_date));
+                                        $next_day_text = "today";
+                                    } else {
+                                        // After reset time - next submission is tomorrow at reset time
+                                        $next_date = date('F j, Y', strtotime('+1 day'));
+                                        $next_day_text = "tomorrow";
+                                    }
+                                    ?>
+                                    <p class="next-date">Next submission available <?php echo $next_day_text; ?>, <strong><?php echo $next_date; ?> at <?php echo $reset_time_text; ?></strong></p>
+                                    <p class="thank-you">Your attendance resets at <strong><?php echo $reset_time_text; ?></strong> based on your <?php echo $last_duration; ?>-hour shift. Thank you for your participation!</p>
                                 </div>
                             </div>
                         </div>
@@ -271,12 +349,17 @@ include 'layout/header.php';
             
                         <form method="POST" class="simple-schedule-form" enctype="multipart/form-data">
                 <input type="hidden" name="action" value="schedule_slot">
+                <input type="hidden" name="attendance_date" value="<?php echo $today; ?>">
                 
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="attendance_date" class="required">Date:</label>
-                        <input type="date" id="attendance_date" name="attendance_date" 
-                               value="<?php echo $view_date; ?>" min="<?php echo $today; ?>" max="<?php echo date('Y-m-d', strtotime('+30 days')); ?>" required>
+                        <label>Date:</label>
+                        <div class="date-display-field">
+                            <span class="date-icon">📅</span>
+                            <span class="date-text"><?php echo date('l, F j, Y', strtotime($today)); ?></span>
+                            <span class="date-badge">Today</span>
+                        </div>
+                        <p class="field-note">You can only submit attendance for today</p>
                     </div>
                     
                     <div class="form-group">
@@ -303,12 +386,15 @@ include 'layout/header.php';
                 
                 <div class="form-group full-width">
                     <label for="sold_photo">📱 Total Sold Photo:</label>
-                    <div class="photo-upload-container">
+                    <div class="photo-upload-container" <?php echo isset($photo_error) ? "style='border:2px solid #ff6b6b; padding:8px; border-radius:6px;'" : ''; ?> >
                         <input type="file" id="sold_photo" name="sold_photo" accept="image/*" class="file-input">
                         <div class="upload-placeholder" onclick="document.getElementById('sold_photo').click()">
                             <span class="upload-icon">📷</span>
                             <p>Upload your total sold photo</p>
                             <span class="btn btn-outline">Choose Photo</span>
+                        </div>
+                        <div id="photo-error" class="field-error" style="color:#ff6b6b; margin-top:8px; display: <?php echo isset($photo_error) ? 'block' : 'none'; ?>; ">
+                            <?php echo htmlspecialchars($photo_error ?? ''); ?>
                         </div>
                         <div id="photo-preview" class="photo-preview" style="display: none;">
                             <img id="preview-image" src="" alt="Preview">
@@ -401,47 +487,7 @@ setInterval(function() {
         // Only refresh if there are active sessions to avoid unnecessary requests
         location.reload();
     }
-}, 30000);  
-
-// Set minimum date to today for date inputs and prevent past date selection
-document.addEventListener('DOMContentLoaded', function() {
-    const dateInputs = document.querySelectorAll('input[type="date"]');
-    const today = new Date().toISOString().split('T')[0];
-    const maxDate = new Date();
-    maxDate.setDate(maxDate.getDate() + 30);
-    const maxDateString = maxDate.toISOString().split('T')[0];
-    
-    dateInputs.forEach(input => {
-        // Set minimum date to today for all date inputs
-        input.min = today;
-        // Set maximum date to 30 days from now
-        input.max = maxDateString;
-        
-        // Set default value to today if empty
-        if (!input.value) {
-            input.value = today;
-        }
-        
-        // Add event listener to prevent manual entry of past dates
-        input.addEventListener('change', function() {
-            if (this.value < today) {
-                alert('You cannot schedule for past dates. Please select today or a future date.');
-                this.value = today;
-            }
-            if (this.value > maxDateString) {
-                alert('You can only schedule up to 30 days in advance.');
-                this.value = maxDateString;
-            }
-        });
-        
-        // Prevent typing past dates
-        input.addEventListener('input', function() {
-            if (this.value && this.value < today) {
-                this.value = today;
-            }
-        });
-    });
-});
+}, 30000);
 
 // Photo preview functionality
 document.getElementById('sold_photo').addEventListener('change', function(e) {
@@ -452,8 +498,33 @@ document.getElementById('sold_photo').addEventListener('change', function(e) {
             document.getElementById('preview-image').src = e.target.result;
             document.getElementById('photo-preview').style.display = 'block';
             document.querySelector('.upload-placeholder').style.display = 'none';
+            // clear inline photo error and red border when a file is chosen
+            const photoErrorEl = document.getElementById('photo-error');
+            const uploadDiv = document.querySelector('.photo-upload-container');
+            if (photoErrorEl) { photoErrorEl.style.display = 'none'; photoErrorEl.textContent = ''; }
+            if (uploadDiv) { uploadDiv.style.border = ''; }
         };
         reader.readAsDataURL(file);
+    }
+});
+
+// Prevent form submit if no photo selected and show inline error
+document.querySelector('.simple-schedule-form').addEventListener('submit', function(e) {
+    const fileInput = document.getElementById('sold_photo');
+    const photoErrorEl = document.getElementById('photo-error');
+    if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+        e.preventDefault();
+        if (photoErrorEl) {
+            photoErrorEl.textContent = 'Please upload your total sold photo before submitting the schedule.';
+            photoErrorEl.style.display = 'block';
+        } else {
+            alert('Please upload your total sold photo before submitting the schedule.');
+        }
+        return false;
+    } else {
+        if (photoErrorEl) {
+            photoErrorEl.style.display = 'none';
+        }
     }
 });
 

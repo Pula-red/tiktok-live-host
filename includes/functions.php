@@ -64,17 +64,40 @@ function get_logged_in_user() {
 
 function log_activity($user_id, $action, $description = null) {
     $db = getDB();
+    // If a numeric user_id was provided, verify the user exists. If not, set to null so FK won't fail.
+    if (!empty($user_id)) {
+        try {
+            $check = $db->prepare("SELECT id FROM users WHERE id = ?");
+            $check->execute([(int)$user_id]);
+            $exists = (bool) $check->fetch();
+            if (!$exists) {
+                $user_id = null;
+            }
+        } catch (PDOException $e) {
+            // If the check fails for some reason, fallback to null to avoid breaking logging.
+            $user_id = null;
+        }
+    } else {
+        $user_id = null;
+    }
+
     $stmt = $db->prepare("
         INSERT INTO activity_logs (user_id, action, description, ip_address, user_agent) 
         VALUES (?, ?, ?, ?, ?)
     ");
-    $stmt->execute([
-        $user_id,
-        $action,
-        $description,
-        $_SERVER['REMOTE_ADDR'] ?? null,
-        $_SERVER['HTTP_USER_AGENT'] ?? null
-    ]);
+    try {
+        $stmt->execute([
+            $user_id,
+            $action,
+            $description,
+            $_SERVER['REMOTE_ADDR'] ?? null,
+            $_SERVER['HTTP_USER_AGENT'] ?? null
+        ]);
+    } catch (PDOException $e) {
+        // Do not let activity logging break the application flow.
+        // Log the error to the PHP error log for investigation.
+        error_log('Activity log failed: ' . $e->getMessage());
+    }
 }
 
 function authenticate_user($username, $password) {
@@ -120,5 +143,68 @@ function get_user_dashboard_url($role) {
         default:
             return $base_url . '/';
     }
+}
+
+/**
+ * Get the current pay period dates
+ * Returns array with 'start_date' and 'end_date'
+ * Pay periods: 1-15 and 16-end of month
+ */
+function get_current_pay_period() {
+    $current_day = (int)date('j');
+    $current_month = date('Y-m');
+    
+    if ($current_day <= 15) {
+        // First period: 1-15
+        return [
+            'start_date' => $current_month . '-01',
+            'end_date' => $current_month . '-15',
+            'period_name' => date('F j', strtotime($current_month . '-01')) . ' - ' . date('j, Y', strtotime($current_month . '-15'))
+        ];
+    } else {
+        // Second period: 16-end of month
+        $last_day = date('t'); // Last day of current month
+        return [
+            'start_date' => $current_month . '-16',
+            'end_date' => $current_month . '-' . $last_day,
+            'period_name' => date('F j', strtotime($current_month . '-16')) . ' - ' . date('j, Y', strtotime($current_month . '-' . $last_day))
+        ];
+    }
+}
+
+/**
+ * Get a specific pay period by date
+ * Returns array with 'start_date' and 'end_date'
+ */
+function get_pay_period_by_date($date) {
+    $timestamp = strtotime($date);
+    $day = (int)date('j', $timestamp);
+    $month = date('Y-m', $timestamp);
+    
+    if ($day <= 15) {
+        return [
+            'start_date' => $month . '-01',
+            'end_date' => $month . '-15',
+            'period_name' => date('F j', strtotime($month . '-01')) . ' - ' . date('j, Y', strtotime($month . '-15'))
+        ];
+    } else {
+        $last_day = date('t', $timestamp);
+        return [
+            'start_date' => $month . '-16',
+            'end_date' => $month . '-' . $last_day,
+            'period_name' => date('F j', strtotime($month . '-16')) . ' - ' . date('j, Y', strtotime($month . '-' . $last_day))
+        ];
+    }
+}
+
+/**
+ * Get days remaining in current pay period
+ */
+function get_days_until_reset() {
+    $period = get_current_pay_period();
+    $end_date = strtotime($period['end_date']);
+    $today = strtotime(date('Y-m-d'));
+    $days = ceil(($end_date - $today) / 86400);
+    return max(0, $days);
 }
 ?>

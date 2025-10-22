@@ -3,6 +3,12 @@
  * Database Seeder for TikTok Live Host Agency
  * This file contains the default users with plain text passwords
  * Passwords will be hashed when stored in the database
+<?php
+/**
+ * Database Seeder for TikTok Live Host Agency
+ *
+ * This script can seed attendance time slots, ensure an admin account exists,
+ * and seed demo products/sales data. It is idempotent for the admin user.
  */
 
 require_once __DIR__ . '/../config/config.php';
@@ -20,164 +26,73 @@ $default_time_slots = [
     ['name' => 'Split Shift PM (2hrs)', 'duration_hours' => 2.0, 'start_time' => '18:00:00', 'end_time' => '20:00:00']
 ];
 
-// Default users with plain text passwords
-$default_users = [
-    [
-        'username' => 'admin',
-        'email' => 'admin@tiktok-live-host.com',
-        'password' => 'admin123', // Plain text password
-        'role' => 'admin',
-        'full_name' => 'System Administrator',
-        'status' => 'active'
-    ],
-    [
-        'username' => 'seller1',
-        'email' => 'seller1@tiktok-live-host.com',
-        'password' => 'seller123', // Plain text password
-        'role' => 'live_seller',
-        'full_name' => 'Jane Doe',
-        'status' => 'active'
-    ],
-    [
-        'username' => 'seller2',
-        'email' => 'seller2@tiktok-live-host.com',
-        'password' => 'seller456', // Plain text password
-        'role' => 'live_seller',
-        'full_name' => 'John Smith',
-        'status' => 'active'
-    ],
-    [
-        'username' => 'demo_seller',
-        'email' => 'demo@tiktok-live-host.com',
-        'password' => 'demo2024', // Plain text password
-        'role' => 'live_seller',
-        'full_name' => 'Demo Seller',
-        'status' => 'active'
-    ]
-];
+function seedAdminUser() {
+    $db = getDB();
 
-/**
- * Function to seed the database with default users
- */
-function seedUsers() {
-    global $default_users;
-    
+    $adminUsername = 'admin';
+    $adminEmail = 'admin@gmail.com';
+    $adminPlain = 'admin123';
+    $adminRole = 'admin';
+    $adminFullName = 'System Administrator';
+    $adminStatus = 'active';
+
     try {
-        $db = getDB();
-        
-        // Clear existing users (optional - remove if you want to keep existing data)
-        echo "Clearing existing users...\n";
-        $db->exec("DELETE FROM users");
-        
-        // Reset auto increment
-        $db->exec("ALTER TABLE users AUTO_INCREMENT = 1");
-        
-        echo "Seeding users...\n";
-        
-        $stmt = $db->prepare("
-            INSERT INTO users (username, email, password, role, full_name, status) 
-            VALUES (?, ?, ?, ?, ?, ?)
-        ");
-        
-        foreach ($default_users as $user) {
-            // Hash the password before storing
-            $hashed_password = password_hash($user['password'], PASSWORD_DEFAULT);
-            
-            $stmt->execute([
-                $user['username'],
-                $user['email'],
-                $hashed_password,
-                $user['role'],
-                $user['full_name'],
-                $user['status']
-            ]);
-            
-            echo "✓ Created user: {$user['username']} (Password: {$user['password']})\n";
+        $check = $db->prepare("SELECT id FROM users WHERE username = ? LIMIT 1");
+        $check->execute([$adminUsername]);
+        $existing = $check->fetch();
+
+        $hashed_password = password_hash($adminPlain, PASSWORD_DEFAULT);
+
+        if ($existing) {
+            $update = $db->prepare("UPDATE users SET email = ?, password = ?, role = ?, full_name = ?, status = ? WHERE id = ?");
+            $update->execute([$adminEmail, $hashed_password, $adminRole, $adminFullName, $adminStatus, $existing['id']]);
+            echo "✓ Updated existing admin user (username: {$adminUsername})\n";
+        } else {
+            $insert = $db->prepare("INSERT INTO users (username, email, password, role, full_name, status) VALUES (?, ?, ?, ?, ?, ?)");
+            $insert->execute([$adminUsername, $adminEmail, $hashed_password, $adminRole, $adminFullName, $adminStatus]);
+            echo "✓ Created admin user: {$adminUsername} (Password: {$adminPlain})\n";
         }
-        
-        echo "Users seeded successfully!\n";
-        
-    } catch (Exception $e) {
-        echo "Error seeding users: " . $e->getMessage() . "\n";
+
+        echo "Admin user ensured. You can now login with username 'admin' and password 'admin123'.\n";
+    } catch (PDOException $e) {
+        echo "Error creating/updating admin user: " . $e->getMessage() . "\n";
         exit(1);
     }
 }
 
-/**
- * Function to seed attendance time slots
- */
 function seedTimeSlots() {
     global $default_time_slots;
-    
+    $db = getDB();
+
     try {
-        $db = getDB();
-        
-        // Clear existing time slots
-        echo "Clearing existing time slots...\n";
+        echo "Seeding attendance time slots...\n";
         $db->exec("DELETE FROM attendance_time_slots");
         $db->exec("ALTER TABLE attendance_time_slots AUTO_INCREMENT = 1");
-        
-        echo "Seeding attendance time slots...\n";
-        
-        $stmt = $db->prepare("
-            INSERT INTO attendance_time_slots (name, duration_hours, start_time, end_time, is_active) 
-            VALUES (?, ?, ?, ?, 1)
-        ");
-        
+
+        $stmt = $db->prepare("INSERT INTO attendance_time_slots (name, duration_hours, start_time, end_time, is_active) VALUES (?, ?, ?, ?, 1)");
         foreach ($default_time_slots as $slot) {
-            $stmt->execute([
-                $slot['name'],
-                $slot['duration_hours'],
-                $slot['start_time'],
-                $slot['end_time']
-            ]);
-            
-            echo "✓ Created time slot: {$slot['name']} ({$slot['start_time']} - {$slot['end_time']})\n";
+            $stmt->execute([$slot['name'], $slot['duration_hours'], $slot['start_time'], $slot['end_time']]);
+            echo "✓ Created time slot: {$slot['name']}\n";
         }
-        
         echo "Time slots seeded successfully!\n";
-        
-    } catch (Exception $e) {
+    } catch (PDOException $e) {
         echo "Error seeding time slots: " . $e->getMessage() . "\n";
         exit(1);
     }
 }
 
-/**
- * Function to seed everything
- */
-function seedAll() {
-    echo "Starting complete database seeding...\n\n";
-    seedTimeSlots();
-    echo "\n";
-    seedUsers();
-    echo "\n";
-    seedSalesData();
-    echo "\n";
-    showCredentials();
-    echo "\nDatabase seeding completed successfully!\n";
-}
-
-/**
- * Function to seed sales data (products and sales)
- */
 function seedSalesData() {
+    $db = getDB();
     try {
-        $db = getDB();
-        
         echo "Seeding products and sales data...\n";
-        
-        // Clear existing data
         $db->exec("DELETE FROM live_host_sales");
         $db->exec("DELETE FROM live_host_daily_summary");
         $db->exec("DELETE FROM products");
-        
-        // Reset auto increments
+
         $db->exec("ALTER TABLE live_host_sales AUTO_INCREMENT = 1");
         $db->exec("ALTER TABLE live_host_daily_summary AUTO_INCREMENT = 1");
         $db->exec("ALTER TABLE products AUTO_INCREMENT = 1");
-        
-        // Insert products
+
         $products = [
             ['Wireless Bluetooth Headphones', 'High-quality wireless headphones with noise cancellation', 89.99, 'Electronics', 'WBH001', 50],
             ['Smartphone Case', 'Protective case for smartphones with multiple colors', 19.99, 'Accessories', 'SPC001', 100],
@@ -188,13 +103,12 @@ function seedSalesData() {
             ['Coffee Tumbler', 'Insulated travel coffee tumbler 16oz', 24.99, 'Kitchen', 'CT001', 60],
             ['Yoga Mat', 'Non-slip exercise yoga mat with carrying strap', 39.99, 'Health & Fitness', 'YM001', 35]
         ];
-        
+
         $stmt = $db->prepare("INSERT INTO products (name, description, price, category, sku, stock_quantity, status) VALUES (?, ?, ?, ?, ?, ?, 'active')");
         foreach ($products as $product) {
             $stmt->execute($product);
         }
-        
-        // Insert sample sales
+
         $sales = [
             [2, 1, 'Wireless Bluetooth Headphones', 2, 89.99, 179.98, 15.00, 26.99, '2025-10-01 14:30:00'],
             [2, 2, 'Smartphone Case', 5, 19.99, 99.95, 10.00, 9.99, '2025-10-01 15:15:00'],
@@ -205,112 +119,89 @@ function seedSalesData() {
             [3, 7, 'Coffee Tumbler', 6, 24.99, 149.94, 8.00, 11.99, '2025-10-02 11:45:00'],
             [2, 8, 'Yoga Mat', 1, 39.99, 39.99, 10.00, 3.99, '2025-10-02 13:20:00']
         ];
-        
+
         $stmt = $db->prepare("INSERT INTO live_host_sales (seller_id, product_id, product_name, quantity, unit_price, total_amount, commission_rate, commission_amount, sale_date, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'confirmed')");
         foreach ($sales as $sale) {
             $stmt->execute($sale);
         }
-        
-        // Insert daily summaries
+
         $summaries = [
             [2, '2025-10-01', 325.92, 8, 40.50, 6.0, 2],
             [3, '2025-10-01', 529.93, 7, 91.98, 4.0, 1],
             [2, '2025-10-02', 199.97, 3, 27.98, 3.0, 1],
             [3, '2025-10-02', 149.94, 6, 11.99, 2.0, 1]
         ];
-        
+
         $stmt = $db->prepare("INSERT INTO live_host_daily_summary (seller_id, summary_date, total_sales, total_items_sold, total_commission, hours_worked, streams_count) VALUES (?, ?, ?, ?, ?, ?, ?)");
         foreach ($summaries as $summary) {
             $stmt->execute($summary);
         }
-        
+
         echo "✓ Created " . count($products) . " products\n";
         echo "✓ Created " . count($sales) . " sales records\n";
         echo "✓ Created " . count($summaries) . " daily summaries\n";
-        
+
         echo "Sales data seeded successfully!\n";
-        
+
     } catch (Exception $e) {
         echo "Error seeding sales data: " . $e->getMessage() . "\n";
         exit(1);
     }
 }
 
-/**
- * Function to display credentials without seeding
- */
 function showCredentials() {
-    global $default_users;
-    
     echo "\n" . str_repeat("=", 60) . "\n";
-    echo "DEFAULT LOGIN CREDENTIALS:\n";
+    echo "DEFAULT ADMIN CREDENTIALS:\n";
     echo str_repeat("=", 60) . "\n";
-    
-    foreach ($default_users as $user) {
-        echo "Role: " . ucfirst($user['role']) . "\n";
-        echo "Username: {$user['username']}\n";
-        echo "Email: {$user['email']}\n";
-        echo "Password: {$user['password']}\n";
-        echo "Full Name: {$user['full_name']}\n";
-        echo str_repeat("-", 40) . "\n";
-    }
+    echo "Username: admin\n";
+    echo "Password: admin123\n";
 }
 
 // Command line interface
 if (php_sapi_name() === 'cli') {
     $action = $argv[1] ?? 'show';
-    
+
     switch ($action) {
         case 'seed':
-            seedAll();
+            seedTimeSlots();
+            seedAdminUser();
+            seedSalesData();
+            showCredentials();
             break;
-            
+
         case 'users':
-            echo "Seeding users only...\n";
-            seedUsers();
+            echo "Seeding users (admin only)...\n";
+            seedAdminUser();
             break;
-            
+
         case 'slots':
             echo "Seeding time slots only...\n";
             seedTimeSlots();
             break;
-            
+
         case 'sales':
-            echo "Seeding sales data only...\n";
+            echo "Seeding products and sales data only...\n";
             seedSalesData();
             break;
-            
+
         case 'show':
         default:
             showCredentials();
             break;
-            
+
         case 'help':
             echo "Usage: php seeder.php [action]\n";
             echo "Actions:\n";
             echo "  show   - Display credentials only (default)\n";
-            echo "  seed   - Seed database with users, time slots, and sales data\n";
-            echo "  users  - Seed users only\n";
+            echo "  seed   - Seed database with time slots, admin user, and sales data\n";
+            echo "  users  - Create/update admin user only\n";
             echo "  slots  - Seed attendance time slots only\n";
             echo "  sales  - Seed products and sales data only\n";
             echo "  help   - Show this help message\n";
             break;
     }
 } else {
-    // If accessed via web browser
-    echo "<h1>TikTok Live Host - Default Credentials</h1>";
-    echo "<style>body{font-family:Arial,sans-serif;margin:40px;} .user{background:#f5f5f5;padding:15px;margin:10px 0;border-radius:5px;} .role{color:#007cba;font-weight:bold;} .password{color:#d9534f;font-weight:bold;}</style>";
-    
-    foreach ($default_users as $user) {
-        echo "<div class='user'>";
-        echo "<div class='role'>Role: " . ucfirst($user['role']) . "</div>";
-        echo "<div><strong>Username:</strong> {$user['username']}</div>";
-        echo "<div><strong>Email:</strong> {$user['email']}</div>";
-        echo "<div class='password'><strong>Password:</strong> {$user['password']}</div>";
-        echo "<div><strong>Full Name:</strong> {$user['full_name']}</div>";
-        echo "</div>";
-    }
-    
-    echo "<p><strong>Note:</strong> To seed the database, run: <code>php seeder.php seed</code> from the command line.</p>";
+    echo "<h1>Seeder</h1><p>Run this from the command line: php seeder.php seed</p>";
 }
+
 ?>

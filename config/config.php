@@ -16,7 +16,7 @@ define('SESSION_LIFETIME', 3600); // 1 hour
 define('PASSWORD_MIN_LENGTH', 6);
 
 // Timezone
-date_default_timezone_set('UTC');
+date_default_timezone_set('Asia/Manila');
 
 // Error reporting (disable in production)      
 error_reporting(E_ALL);

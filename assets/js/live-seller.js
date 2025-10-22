@@ -66,6 +66,7 @@ function initLiveStatusMonitoring() {
     
     // Simulate live status updates (replace with real API calls)
     function updateLiveStatus() {
+        if (!liveStatus) return; // no live-status element on this page
         // This would be replaced with actual API calls to check stream status
         const isLive = Math.random() > 0.8; // Simulate random live status
         

@@ -1,3 +1,590 @@
+/* ============================================
+   LIVE SELLER SIDEBAR - BASE STYLES
+   ============================================ */
+
+/* Sidebar Container */
+.live-seller-layout .sidebar {
+    width: 280px;
+    background: linear-gradient(180deg, #1a1d2e 0%, #16171f 100%) !important;
+    border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+    position: fixed;
+    left: 0;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Sidebar Header */
+.live-seller-layout .sidebar-header {
+    padding: 1.25rem 1.25rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+    flex-shrink: 0;
+    background: rgba(20, 22, 32, 0.5);
+}
+
+/* Logo Container */
+.live-seller-layout .sidebar .logo {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    color: white;
+    transition: all 0.3s ease;
+}
+
+.live-seller-layout .sidebar .logo:hover {
+    transform: translateX(2px);
+}
+
+/* Logo Icon - Purple-Blue Gradient Tile */
+.live-seller-layout .sidebar .logo-icon {
+    width: 42px;
+    height: 42px;
+    background: linear-gradient(135deg, #667eea, #764ba2) !important;
+    border-radius: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.25) !important;
+    transition: all 0.3s ease;
+}
+
+.live-seller-layout .sidebar .logo:hover .logo-icon {
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4) !important;
+}
+
+/* Logo Text */
+.live-seller-layout .sidebar .logo span {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: #ffffff;
+    letter-spacing: -0.02em;
+}
+
+/* Sidebar Navigation */
+.live-seller-layout .sidebar-nav {
+    padding: 1.5rem 0;
+    flex: 1;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(102, 126, 234, 0.2) transparent;
+}
+
+.live-seller-layout .sidebar-nav::-webkit-scrollbar {
+    width: 6px;
+}
+
+.live-seller-layout .sidebar-nav::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.live-seller-layout .sidebar-nav::-webkit-scrollbar-thumb {
+    background: rgba(102, 126, 234, 0.2);
+    border-radius: 3px;
+}
+
+.live-seller-layout .sidebar-nav::-webkit-scrollbar-thumb:hover {
+    background: rgba(102, 126, 234, 0.4);
+}
+
+/* Navigation Menu */
+.live-seller-layout .nav-menu {
+    list-style: none;
+    margin: 0;
+    padding: 0 1rem;
+}
+
+/* Navigation Section Title */
+.live-seller-layout .nav-section-title {
+    padding: 1.2rem 1rem 0.6rem 1rem;
+    color: rgba(139, 148, 195, 0.6) !important;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-top: 1rem;
+}
+
+.live-seller-layout .nav-section-title:first-child {
+    margin-top: 0;
+}
+
+/* Navigation Item */
+.live-seller-layout .nav-item {
+    margin-bottom: 0.5rem;
+}
+
+/* Navigation Link */
+.live-seller-layout .nav-link {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    color: rgba(255, 255, 255, 0.5) !important;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    border-radius: 12px;
+    position: relative;
+    font-size: 0.95rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+
+.live-seller-layout .nav-link:hover {
+    background: rgba(102, 126, 234, 0.1) !important;
+    color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.live-seller-layout .nav-link:hover .nav-icon {
+    transform: scale(1.1);
+}
+
+/* Active Navigation Link - Purple Background with Blue Accent */
+.live-seller-layout .nav-link.active {
+    background: rgba(102, 126, 234, 0.15) !important;
+    color: #8b94e7 !important;
+    box-shadow: 0 0 15px rgba(102, 126, 234, 0.1) !important;
+}
+
+.live-seller-layout .nav-link.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 60%;
+    background: linear-gradient(180deg, #667eea, #764ba2) !important;
+    border-radius: 0 4px 4px 0;
+    box-shadow: 0 0 8px rgba(102, 126, 234, 0.3);
+}
+
+.live-seller-layout .nav-link.active .nav-icon {
+    transform: scale(1.05);
+    color: #8b94e7 !important;
+}
+
+/* Navigation Icon */
+.live-seller-layout .nav-icon {
+    font-size: 1.25rem;
+    width: 24px;
+    text-align: center;
+    flex-shrink: 0;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Navigation Text */
+.live-seller-layout .nav-text {
+    font-weight: 600;
+    flex: 1;
+    letter-spacing: -0.01em;
+}
+
+/* Sidebar Footer */
+.live-seller-layout .sidebar-footer {
+    flex-shrink: 0;
+    padding: 1.25rem 1.25rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06) !important;
+    background: rgba(20, 22, 32, 0.5) !important;
+    margin-top: auto;
+}
+
+/* User Info Container */
+.live-seller-layout .sidebar-footer .user-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+/* User Avatar - Purple-Blue Gradient Tile */
+.live-seller-layout .sidebar-footer .user-avatar {
+    width: 42px;
+    height: 42px;
+    background: linear-gradient(135deg, #667eea, #764ba2) !important;
+    border-radius: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    color: white;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.25) !important;
+    border: 2px solid rgba(102, 126, 234, 0.2) !important;
+    transition: all 0.3s ease;
+    overflow: hidden;
+    position: relative;
+}
+
+/* Ensure images fill the avatar properly */
+.live-seller-layout .sidebar-footer .user-avatar img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    display: block !important;
+    border-radius: 11px !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+}
+
+/* User Details */
+.live-seller-layout .sidebar-footer .user-details {
+    flex: 1;
+    min-width: 0;
+}
+
+.live-seller-layout .sidebar-footer .user-name {
+    font-weight: 700;
+    color: white;
+    margin: 0 0 0.2rem 0;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    letter-spacing: 0.1px;
+}
+
+.live-seller-layout .sidebar-footer .user-role {
+    margin: 0;
+    font-size: 0.75rem;
+    color: #8b8b8b;
+    font-weight: 500;
+}
+
+/* Main Content Adjustment */
+.live-seller-layout .main-content {
+    margin-left: 280px; 
+    min-height: 100vh;
+    background: #050506 url('../../tiktok_bg2.png') center center / cover no-repeat fixed;
+    transition: margin-left 0.3s ease;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) { 
+    .live-seller-layout .sidebar {
+        transform: translateX(-100%);
+    }
+    
+    .live-seller-layout .sidebar.active {
+        transform: translateX(0);
+        box-shadow: 4px 0 24px rgba(0, 0, 0, 0.5);
+    }
+    
+    .live-seller-layout .main-content {
+        margin-left: 0;
+        background: #050506 url('../../tiktok_bg2.png') center center / cover no-repeat fixed;
+        background-attachment: scroll; /* Change to scroll on mobile for better performance */
+    }
+}
+
+/* Scrollbar Styling for Sidebar */
+.live-seller-layout .sidebar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.live-seller-layout .sidebar::-webkit-scrollbar-track { 
+    background: transparent;
+}
+
+.live-seller-layout .sidebar::-webkit-scrollbar-thumb {
+    background: rgba(102, 126, 234, 0.3);
+    border-radius: 3px;
+}
+
+.live-seller-layout .sidebar::-webkit-scrollbar-thumb:hover {
+    background: rgba(102, 126, 234, 0.5);
+}
+
+/* ============================================
+   END LIVE SELLER SIDEBAR STYLES
+   ============================================ */
+
+/* ============================================
+   TOPBAR & USER DROPDOWN STYLES
+   ============================================ */
+
+/* Topbar Container */
+.live-seller-layout .topbar {
+    background: #0f0f12;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 1rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.live-seller-layout .topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.live-seller-layout .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.live-seller-layout .topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+/* Page Title */
+.live-seller-layout .page-title {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #ffffff;
+    letter-spacing: -0.02em;
+}
+
+/* Sidebar Toggle Button */
+.live-seller-layout .sidebar-toggle {
+    display: none;
+    flex-direction: column;
+    gap: 4px;
+    background: transparent;
+    border: none;
+    padding: 0.5rem;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: background 0.2s ease;
+}
+
+.live-seller-layout .sidebar-toggle:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.live-seller-layout .sidebar-toggle span {
+    width: 24px;
+    height: 3px;
+    background: #ffffff;
+    border-radius: 2px;
+    transition: all 0.3s ease;
+}
+
+/* User Menu Container */
+.live-seller-layout .user-menu {
+    position: relative;
+}
+
+/* User Menu Toggle Button */
+.live-seller-layout .user-menu-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #ffffff;
+    cursor: pointer;
+    padding: 0.6rem 1rem;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+    font-weight: 500;
+}
+
+.live-seller-layout .user-menu-toggle:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(102, 126, 234, 0.3);
+    transform: translateY(-1px);
+}
+
+/* User Menu Avatar in Topbar */
+.live-seller-layout .user-menu-toggle .user-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    font-size: 0.9rem;
+    font-weight: 800;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+}
+
+/* User Name in Toggle */
+.live-seller-layout .user-menu-toggle .user-name {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+/* Dropdown Arrow */
+.live-seller-layout .dropdown-arrow {
+    font-size: 0.7rem;
+    color: #8b8b8b;
+    transition: transform 0.3s ease, color 0.3s ease;
+}
+
+.live-seller-layout .user-menu.active .dropdown-arrow {
+    transform: rotate(180deg);
+    color: #667eea;
+}
+
+/* User Dropdown Menu */
+.live-seller-layout .user-dropdown {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    right: 0;
+    background: #1a1a1f;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    min-width: 220px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    overflow: hidden;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 1001;
+}
+
+.live-seller-layout .user-menu.active .user-dropdown {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+/* Dropdown Items */
+.live-seller-layout .dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 1.25rem;
+    color: #c0c0c0;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    font-size: 0.95rem;
+    font-weight: 500;
+    position: relative;
+}
+
+.live-seller-layout .dropdown-item:hover {
+    background: rgba(102, 126, 234, 0.08);
+    color: #ffffff;
+    padding-left: 1.5rem;
+}
+
+.live-seller-layout .dropdown-item:hover .item-icon {
+    transform: scale(1.15);
+}
+
+/* Dropdown Item Icon */
+.live-seller-layout .dropdown-item .item-icon {
+    font-size: 1.1rem;
+    width: 24px;
+    text-align: center;
+    transition: transform 0.2s ease;
+}
+
+/* Dropdown User Info Section */
+.live-seller-layout .dropdown-user-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 1.25rem;
+    background: rgba(102, 126, 234, 0.05);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.live-seller-layout .dropdown-avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    color: white;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    border: 2px solid rgba(102, 126, 234, 0.2);
+}
+
+.live-seller-layout .dropdown-user-details {
+    flex: 1;
+    min-width: 0;
+}
+
+.live-seller-layout .dropdown-user-name {
+    font-weight: 700;
+    color: white;
+    font-size: 0.95rem;
+    margin-bottom: 0.25rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.live-seller-layout .dropdown-user-role {
+    font-size: 0.75rem;
+    color: rgba(139, 148, 195, 0.8);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Dropdown Divider */
+.live-seller-layout .dropdown-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.08);
+    margin: 0.5rem 0;
+}
+
+/* Special styling for Logout */
+.live-seller-layout .dropdown-item:last-child {
+    color: #ff6b6b;
+}
+
+.live-seller-layout .dropdown-item:last-child:hover {
+    background: rgba(255, 107, 107, 0.1);
+    color: #ff8787;
+}
+
+/* Responsive: Show sidebar toggle on mobile */
+@media (max-width: 768px) {
+    .live-seller-layout .sidebar-toggle {
+        display: flex;
+    }
+    
+    .live-seller-layout .page-title {
+        font-size: 1.25rem;
+    }
+    
+    .live-seller-layout .user-menu-toggle .user-name {
+        display: none;
+    }
+    
+    .live-seller-layout .topbar {
+        padding: 1rem 1.25rem;
+    }
+}
+
+/* ============================================
+   END TOPBAR & USER DROPDOWN STYLES
+   ============================================ */
+
 /* Enhanced Dashboard Styles */
 
 /* Dashboard Welcome Section */
@@ -6,6 +593,127 @@
     max-width: 1400px;
     margin: 0 auto;
     animation: fadeInUp 0.8s ease-out;
+}
+
+/* Pay Period Banner */
+.pay-period-banner {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.15));
+    border: 1px solid rgba(102, 126, 234, 0.3);
+    border-radius: 16px;
+    padding: 1.5rem 2rem;
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2rem;
+    flex-wrap: wrap;
+    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.1);
+    backdrop-filter: blur(10px);
+}
+
+.period-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex: 1;
+}
+
+.period-icon {
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    flex-shrink: 0;
+}
+
+.period-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.period-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.7);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.period-dates {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: white;
+}
+
+.period-countdown {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    min-width: 120px;
+}
+
+.countdown-value {
+    font-size: 2rem;
+    font-weight: 800;
+    color: #fbbf24;
+    line-height: 1;
+}
+
+.countdown-label {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.7);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 0.25rem;
+}
+
+.period-note {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.25rem;
+    background: rgba(59, 130, 246, 0.1);
+    border-radius: 10px;
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.info-icon {
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+    .pay-period-banner {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1rem;
+        padding: 1.25rem;
+    }
+    
+    .period-info {
+        justify-content: flex-start;
+    }
+    
+    .period-countdown {
+        align-self: center;
+    }
+    
+    .period-note {
+        text-align: center;
+        justify-content: center;
+    }
 }
 
 .dashboard-welcome {
@@ -277,54 +985,162 @@
 
 /* Enhanced Ranking Section */
 .ranking-section {
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: 
+        linear-gradient(135deg, rgba(10, 10, 15, 0.15) 0%, rgba(20, 20, 30, 0.10) 100%),
+        url('../../tiktok_bg2.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 32px;
     padding: 3rem;
-    backdrop-filter: blur(20px);
+    backdrop-filter: blur(0px);
     position: relative;
     overflow: hidden;
 }
 
 .ranking-section::before {
-    content: '';
+    content: '';    
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
-    background: 
-        radial-gradient(circle at 10% 20%, rgba(120, 119, 198, 0.05) 0%, transparent 50%),
-        radial-gradient(circle at 80% 80%, rgba(255, 118, 117, 0.05) 0%, transparent 50%);
+    background: transparent;
     pointer-events: none;
 }
 
 .section-header {
     display: flex;
-    justify-content: space-between;
+    justify-content: center;
     align-items: center;
-    margin-bottom: 3rem;
+    margin-bottom: 0.5rem;
     position: relative;
     z-index: 2;
+    width: 100%;
+    padding: 2rem 0 0.5rem 0;
 }
 
 .header-content {
-    flex: 1;
+    text-align: center;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 .section-title {
     font-size: 2.5rem;
     font-weight: 800;
-    margin: 0 0 0.5rem 0;
+    margin: 0;
     color: var(--light-text);
-    display: flex;
+    display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 1rem;
+    letter-spacing: -0.5px;
+    background: linear-gradient(135deg, #00f2fe, #4facfe);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* TikTok Logo beside Ranking Title */
+.ranking-tiktok-logo {
+    width: 50px;
+    height: 50px;
+    object-fit: contain;
+    margin-right: 1rem;
+    filter: drop-shadow(0 4px 12px rgba(0, 242, 254, 0.4));
+    animation: logo-float 3s ease-in-out infinite;
+}
+
+@keyframes logo-float {
+    0%, 100% {
+        transform: translateY(0px);
+    }
+    50% {
+        transform: translateY(-8px);
+    }
 }
 
 .title-icon {
+    font-size: 3rem !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    line-height: 1 !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    margin-right: 0.5rem;
+}
+
+/* Congratulations Banner */
+.congratulations-banner {
+    text-align: center;
+    padding: 0.5rem 1.5rem 1.5rem 1.5rem;
+    margin: 0 0 2rem 0;
+    position: relative;
+    z-index: 3;
+    animation: fadeInScale 0.6s ease-out;
+}
+
+.congrats-text {
     font-size: 2.5rem;
-    animation: rotate-gentle 6s ease-in-out infinite;
+    font-weight: 900;
+    color: #ffd700;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    margin-bottom: 0.5rem;
+    text-shadow: 
+        0 0 10px rgba(255, 215, 0, 0.5),
+        0 0 20px rgba(255, 215, 0, 0.3),
+        0 2px 4px rgba(0, 0, 0, 0.5);
+    animation: glow-pulse 2s ease-in-out infinite;
+}
+
+.congrats-subtitle {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #ffffff;
+    margin-bottom: 0.5rem;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+}
+
+.congrats-date {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #00f2fe;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    text-shadow: 0 2px 8px rgba(0, 242, 254, 0.4);
+}
+
+@keyframes fadeInScale {
+    from {
+        opacity: 0;
+        transform: scale(0.9) translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+@keyframes glow-pulse {
+    0%, 100% {
+        text-shadow: 
+            0 0 10px rgba(255, 215, 0, 0.5),
+            0 0 20px rgba(255, 215, 0, 0.3),
+            0 2px 4px rgba(0, 0, 0, 0.5);
+    }
+    50% {
+        text-shadow: 
+            0 0 20px rgba(255, 215, 0, 0.8),
+            0 0 30px rgba(255, 215, 0, 0.5),
+            0 0 40px rgba(255, 215, 0, 0.3),
+            0 2px 4px rgba(0, 0, 0, 0.5);
+    }
 }
 
 .section-subtitle {
@@ -372,6 +1188,7 @@
     bottom: 0;
     border-radius: 24px;
     overflow: hidden;
+    opacity: 0;
 }
 
 .bg-sparkle {
@@ -380,11 +1197,8 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: 
-        radial-gradient(circle at 20% 30%, rgba(255, 215, 0, 0.1) 0%, transparent 50%),
-        radial-gradient(circle at 80% 70%, rgba(192, 192, 192, 0.08) 0%, transparent 50%),
-        radial-gradient(circle at 50% 20%, rgba(205, 127, 50, 0.06) 0%, transparent 50%);
-    animation: sparkle-drift 10s ease-in-out infinite;
+    background: transparent;
+    animation: none;
 }
 
 .bg-rays {
@@ -394,8 +1208,8 @@
     width: 200%;
     height: 200%;
     transform: translate(-50%, -50%);
-    background: conic-gradient(from 0deg, transparent, rgba(255, 215, 0, 0.03), transparent, rgba(255, 215, 0, 0.03), transparent);
-    animation: rays-rotate 20s linear infinite;
+    background: transparent;
+    animation: none;
 }
 
 .podium-positions {
@@ -444,6 +1258,7 @@
 .position-platform {
     margin-bottom: 2rem;
     position: relative;
+    display: none; /* Hide the platform design */
 }
 
 .platform-height {
@@ -498,7 +1313,7 @@
     margin: 0 auto 1.5rem;
     position: relative;
     transition: all 0.3s ease;
-}
+}           
 
 .profile-circle:hover {
     transform: scale(1.1);
@@ -548,6 +1363,20 @@
     left: 50%;
     transform: translate(-50%, -50%);
     z-index: 2;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border-radius: 50%;
+}
+
+.avatar-content .profile-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
 }
 
 .avatar-initial {
@@ -564,7 +1393,9 @@
     font-size: 2rem;
     filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
     z-index: 3;
-}
+    display: block !important;
+    visibility: visible !important;
+}   
 
 .contestant-details {
     margin-top: 1rem;
@@ -756,6 +1587,14 @@
     justify-content: center;
     border: 2px solid rgba(255, 255, 255, 0.1);
     transition: all 0.3s ease;
+    overflow: hidden;
+    position: relative;
+}
+
+.avatar-circle .profile-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 
 .current-user-avatar {
@@ -1101,17 +1940,8 @@
     }
 }
 
-/* Live Seller Panel Specific Styles */
-
-.live-seller-layout .sidebar .logo-icon {
-    background: var(--gradient-secondary);
-}
-
-.live-seller-layout .nav-link.active {
-    background: rgba(37, 244, 238, 0.1);
-    color: var(--secondary-color);
-    border-right: 3px solid var(--secondary-color);
-}
+/* Live Seller Panel Specific Styles - REMOVED OLD CONFLICTING STYLES */
+/* Sidebar styles are now defined below at line ~3454 with the burgundy/pink theme */
 
 /* Live Status Indicator */
 .live-status {
@@ -3309,7 +4139,7 @@
         min-width: 100%;
         padding: 1rem 2rem;
         font-size: 1rem;
-    }
+    }   
     
     .form-footer {
         padding: 2rem 1.5rem;
@@ -3449,4 +4279,514 @@
         padding: 0.875rem 1.5rem;
         font-size: 0.9rem;
     }
+}
+
+/* ============================================
+   USER PERFORMANCE CARD/FORM STYLES
+   ============================================ */
+
+.user-performance-card {
+    background: linear-gradient(135deg, rgba(30, 32, 48, 0.95), rgba(26, 29, 46, 0.95));
+    border: 1px solid rgba(102, 126, 234, 0.2);
+    border-radius: 20px;
+    padding: 0;
+    margin-bottom: 2.5rem;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(102, 126, 234, 0.1);
+    backdrop-filter: blur(10px);
+    position: relative;
+    overflow: hidden;
+    animation: fadeInUp 0.6s ease-out;
+}
+
+.user-performance-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #667eea, #764ba2, #667eea);
+    background-size: 200% 100%;
+    animation: shimmer 3s linear infinite;
+}
+
+.card-header-section {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    padding: 2rem 2.5rem 1.5rem;
+    border-bottom: none;
+    background: rgba(30, 32, 48, 0.5);
+    flex-wrap: wrap;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    flex: 1;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+/* Compact Pay Period Info Styles */
+.compact-period-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.period-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1.25rem;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.25), rgba(118, 75, 162, 0.25));
+    border: 1px solid rgba(102, 126, 234, 0.4);
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+}
+
+.period-icon-small {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.period-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.period-label {
+    font-size: 0.65rem;
+    color: rgba(255, 255, 255, 0.6);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    font-weight: 700;
+}
+
+.period-value {
+    font-size: 0.95rem;
+    color: #ffffff;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+
+.countdown-badge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0.65rem 1rem;
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.25), rgba(245, 158, 11, 0.25));
+    border: 1px solid rgba(251, 191, 36, 0.5);
+    border-radius: 12px;
+    min-width: 75px;
+    box-shadow: 0 4px 12px rgba(251, 191, 36, 0.2);
+}
+
+.countdown-number {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: #fbbf24;
+    line-height: 1;
+    text-shadow: 0 2px 8px rgba(251, 191, 36, 0.4);
+}
+
+.countdown-text {
+    font-size: 0.6rem;
+    color: rgba(255, 255, 255, 0.7);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-top: 0.25rem;
+    font-weight: 700;
+}
+
+/* Period Info Note */
+.period-info-note {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 2.5rem;
+    background: rgba(59, 130, 246, 0.1);
+    border-bottom: 1px solid rgba(102, 126, 234, 0.15);
+    font-size: 0.85rem;
+    color: rgba(139, 148, 195, 0.9);
+}
+
+.info-icon-small {
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.header-icon {
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    box-shadow: 0 8px 24px rgba(102, 126, 234, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    flex-shrink: 0;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.icon-emoji {
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.header-text {
+    flex: 1;
+}
+
+.card-title {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #ffffff;
+    letter-spacing: -0.02em;
+}
+
+.card-subtitle {
+    margin: 0;
+    color: rgba(139, 148, 195, 0.8);
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.performance-form {
+    padding: 2.5rem;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+.form-row:last-of-type {
+    margin-bottom: 0;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.form-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: rgba(139, 148, 195, 0.9);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.label-icon {
+    font-size: 1rem;
+}
+
+.form-value {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(102, 126, 234, 0.15);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    color: #ffffff;
+    font-size: 1.1rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.form-value:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(102, 126, 234, 0.25);
+}
+
+.highlight-value {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.12), rgba(118, 75, 162, 0.08));
+    border-color: rgba(102, 126, 234, 0.3);
+    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.1);
+}
+
+.highlight-value:hover {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.18), rgba(118, 75, 162, 0.12));
+    border-color: rgba(102, 126, 234, 0.4);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.15);
+}
+
+.sales-value {
+    background: linear-gradient(135deg, rgba(76, 175, 80, 0.12), rgba(76, 175, 80, 0.08));
+    border-color: rgba(76, 175, 80, 0.3);
+}
+
+.sales-value:hover {
+    background: linear-gradient(135deg, rgba(76, 175, 80, 0.18), rgba(76, 175, 80, 0.12));
+    border-color: rgba(76, 175, 80, 0.4);
+}
+
+.rank-value {
+    background: linear-gradient(135deg, rgba(255, 193, 7, 0.12), rgba(255, 193, 7, 0.08));
+    border-color: rgba(255, 193, 7, 0.3);
+}
+
+.rank-value:hover {
+    background: linear-gradient(135deg, rgba(255, 193, 7, 0.18), rgba(255, 193, 7, 0.12));
+    border-color: rgba(255, 193, 7, 0.4);
+}
+
+.value-number {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #ffffff;
+}
+
+.value-unit {
+    font-size: 0.9rem;
+    color: rgba(139, 148, 195, 0.8);
+    font-weight: 500;
+    margin-left: 0.25rem;
+}
+
+.role-badge-inline {
+    display: inline-block;
+    padding: 0.4rem 1rem;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: #ffffff;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.newbie-badge {
+    background: linear-gradient(135deg, #4facfe, #00f2fe) !important;
+    box-shadow: 0 4px 12px rgba(79, 172, 254, 0.4) !important;
+}
+
+.tenured-badge {
+    background: linear-gradient(135deg, #ffa726, #fb8c00) !important;
+    box-shadow: 0 4px 12px rgba(255, 167, 38, 0.4) !important;
+}
+
+.rank-display {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+}
+
+.rank-number {
+    font-size: 2rem;
+    font-weight: 800;
+    color: #ffd700;
+    text-shadow: 0 2px 8px rgba(255, 215, 0, 0.3);
+}
+
+.rank-total {
+    font-size: 1rem;
+    color: rgba(139, 148, 195, 0.8);
+    font-weight: 600;
+}
+
+.rank-crown {
+    font-size: 1.5rem;
+    margin-left: 0.5rem;
+    animation: gentle-bounce 2s ease-in-out infinite;
+}
+
+.performance-footer {
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 1px solid rgba(102, 126, 234, 0.15);
+}
+
+.performance-message {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.05));
+    border: 1px solid rgba(102, 126, 234, 0.2);
+    border-radius: 12px;
+    padding: 1.25rem 2rem;
+}
+
+.message-icon {
+    font-size: 1.5rem;
+}
+
+.message-text {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+/* Responsive Design for Performance Card */
+@media (max-width: 968px) {
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .user-performance-card {
+        border-radius: 16px;
+        margin-bottom: 2rem;
+    }
+    
+    .card-header-section {
+        flex-direction: column;
+        align-items: stretch;
+        text-align: center;
+        padding: 1.5rem 1.25rem 1.25rem;
+    }
+    
+    .header-left {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+    
+    .header-right {
+        width: 100%;
+        justify-content: center;
+        margin-top: 0.5rem;
+    }
+    
+    .compact-period-info {
+        flex-direction: column;
+        width: 100%;
+        gap: 0.75rem;
+    }
+    
+    .period-badge {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .countdown-badge {
+        align-self: center;
+        min-width: 85px;
+    }
+    
+    .period-info-note {
+        text-align: center;
+        justify-content: center;
+        padding: 0.75rem 1.25rem;
+        font-size: 0.8rem;
+    }
+    
+    .header-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 1.75rem;
+    }
+    
+    .card-title {
+        font-size: 1.5rem;
+    }
+    
+    .card-subtitle {
+        font-size: 0.9rem;
+    }
+    
+    .performance-form {
+        padding: 1.5rem 1.25rem;
+    }
+    
+    .form-row {
+        gap: 1.25rem;
+        margin-bottom: 1.25rem;
+    }
+    
+    .value-number {
+        font-size: 1.25rem;
+    }
+    
+    .rank-number {
+        font-size: 1.5rem;
+    }
+    
+    .performance-message {
+        flex-direction: column;
+        gap: 0.75rem;
+        padding: 1rem 1.25rem;
+        text-align: center;
+    }
+}
+
+/* Tablet breakpoint for better layout */
+@media (max-width: 968px) and (min-width: 769px) {
+    .compact-period-info {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .period-badge {
+        width: 100%;
+    }
+    
+    .countdown-badge {
+        align-self: center;
+    }
+}
+
+/* DUPLICATE SIDEBAR STYLES REMOVED - See comprehensive styles at top of file */
+
+/* Date Display Field Styles */
+.date-display-field {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 1.25rem;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+    border: 2px solid rgba(102, 126, 234, 0.3);
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.date-display-field .date-icon {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.date-display-field .date-text {
+    flex: 1;
+    color: #ffffff;
+    letter-spacing: 0.3px;
+}
+
+.date-display-field .date-badge {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    padding: 0.35rem 0.85rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.field-note {
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.6);
+    font-style: italic;
 }

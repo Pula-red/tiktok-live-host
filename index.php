@@ -24,7 +24,9 @@ if (is_logged_in()) {
     <header class="header">
         <nav class="nav">
             <a href="/" class="logo">
-                <div class="logo-icon">📺</div>     
+                <div class="logo-icon">
+                    <img src="tik-tok.png" alt="TikTok" style="width: 28px; height: 28px; object-fit: contain;">
+                </div>     
                 <span><?php echo SITE_NAME; ?></span>
             </a>
             <ul class="nav-links">

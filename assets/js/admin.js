@@ -7,6 +7,17 @@ document.addEventListener('DOMContentLoaded', function() {
     if (sidebarToggle && sidebar) {
         sidebarToggle.addEventListener('click', function() {
             sidebar.classList.toggle('active');
+            
+            // Add overlay for mobile
+            if (sidebar.classList.contains('active')) {
+                const overlay = document.createElement('div');
+                overlay.className = 'sidebar-overlay';
+                overlay.onclick = () => {
+                    sidebar.classList.remove('active');
+                    overlay.remove();
+                };
+                document.body.appendChild(overlay);
+            }
         });
         
         // Close sidebar when clicking outside on mobile
@@ -14,10 +25,42 @@ document.addEventListener('DOMContentLoaded', function() {
             if (window.innerWidth <= 768) {
                 if (!sidebar.contains(e.target) && !sidebarToggle.contains(e.target)) {
                     sidebar.classList.remove('active');
+                    const overlay = document.querySelector('.sidebar-overlay');
+                    if (overlay) overlay.remove();
                 }
             }
         });
     }
+
+    // Enhanced navigation link interactions
+    const navLinks = document.querySelectorAll('.nav-link');
+    navLinks.forEach(link => {
+        // Add ripple effect on click
+        link.addEventListener('click', function(e) {
+            const ripple = document.createElement('span');
+            ripple.className = 'nav-ripple';
+            
+            const rect = this.getBoundingClientRect();
+            const size = Math.max(rect.width, rect.height);
+            const x = e.clientX - rect.left - size / 2;
+            const y = e.clientY - rect.top - size / 2;
+            
+            ripple.style.width = ripple.style.height = size + 'px';
+            ripple.style.left = x + 'px';
+            ripple.style.top = y + 'px';
+            
+            this.appendChild(ripple);
+            
+            setTimeout(() => ripple.remove(), 600);
+        });
+
+        // Add active class animation
+        link.addEventListener('mouseenter', function() {
+            if (!this.classList.contains('active')) {
+                this.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+            }
+        });
+    });
 
     // User menu dropdown
     const userMenuToggle = document.getElementById('userMenuToggle');
@@ -37,42 +80,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-
-    // Add loading states to buttons
-    const actionButtons = document.querySelectorAll('[data-action]');
-    actionButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            if (!this.classList.contains('loading')) {
-                this.classList.add('loading');
-                this.disabled = true;
-                
-                // Remove loading state after a delay (or when action completes)
-                setTimeout(() => {
-                    this.classList.remove('loading');
-                    this.disabled = false;
-                }, 2000);
-            }
-        });
-    });
-
-    // Auto-update stats (optional)
-    function updateStats() {
-        // This would make AJAX calls to update dashboard stats in real-time
-        console.log('Updating stats...');
-    }
-
-    // Update stats every 30 seconds
-    setInterval(updateStats, 30000);
-
-    // Add smooth scroll to navigation links
-    const navLinks = document.querySelectorAll('.nav-link');
-    navLinks.forEach(link => {
-        link.addEventListener('click', function(e) {
-            // Add active class animation
-            navLinks.forEach(l => l.classList.remove('active'));
-            this.classList.add('active');
-        });
-    });
 
     // Initialize tooltips (if needed)
     function initTooltips() {
