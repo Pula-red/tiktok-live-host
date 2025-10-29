@@ -191,7 +191,7 @@ include 'layout/header.php';
     text-transform: uppercase;
 }
 
-.status-pending {
+.status-pending_approval {
     background: #fef3c7;
     color: #92400e;
 }
@@ -475,7 +475,7 @@ include 'layout/header.php';
 
     <div class="attendance-grid">
         <?php foreach ($attendance_records as $record): ?>
-            <div class="attendance-card">
+            <div class="attendance-card" data-status="<?php echo htmlspecialchars($record['status']); ?>">
                 <div class="card-header">
                     <div class="seller-avatar">
                         <?php echo strtoupper(substr($record['seller_name'], 0, 1)); ?>
@@ -483,7 +483,14 @@ include 'layout/header.php';
                     <div class="seller-info">
                         <h3><?php echo htmlspecialchars($record['seller_name']); ?></h3>
                         <div class="status-badge status-<?php echo $record['status']; ?>">
-                            <?php echo ucfirst(str_replace('_', ' ', $record['status'])); ?>
+                            <?php 
+                            $status = $record['status'];
+                            if ($status === 'pending_approval') {
+                                echo 'Pending';
+                            } else {
+                                echo ucfirst($status);
+                            }
+                            ?>
                         </div>
                     </div>
                 </div>
