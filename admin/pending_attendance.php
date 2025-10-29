@@ -32,10 +32,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     UPDATE attendance 
                     SET status = 'rejected',
                         approved_by = ?,
-                        approved_at = CURRENT_TIMESTAMP
+                        approved_at = CURRENT_TIMESTAMP,
+                        rejection_reason = ?
                     WHERE id = ? AND status = 'pending_approval'
                 ");
-                $stmt->execute([$_SESSION['user_id'], $attendance_id]);
+                $stmt->execute([$_SESSION['user_id'], $rejection_reason, $attendance_id]);
                 
                 if ($stmt->rowCount() > 0) {
                     $_SESSION['success_message'] = "Attendance rejected successfully.";
@@ -558,13 +559,9 @@ include 'layout/header.php';
                                 </button>
                             </form>
                             
-                            <form method="POST" style="flex: 1;">
-                                <input type="hidden" name="attendance_id" value="<?php echo $record['id']; ?>">
-                                <input type="hidden" name="action" value="reject">
-                                <button type="submit" class="btn-reject">
-                                    <span>×</span> Reject
-                                </button>
-                            </form>
+                            <button type="button" class="btn-reject" onclick="openRejectModal(<?php echo $record['id']; ?>)">
+                                <span>×</span> Reject
+                            </button>
                         </div>
                     </div>
                 <?php endif; ?>
@@ -580,6 +577,23 @@ include 'layout/header.php';
     </div>
 </div>
 
+<!-- Reject Confirmation Modal -->
+<div class="modal" id="rejectModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Confirm Rejection</h3>
+        </div>
+        <div class="modal-body">
+            <p>Please provide a reason for rejecting this attendance:</p>
+            <textarea id="rejectionReason" name="rejection_reason" placeholder="Enter rejection reason..." required></textarea>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-cancel" onclick="closeRejectModal()">Cancel</button>
+            <button type="button" class="btn-submit" onclick="submitRejection()">Confirm Rejection</button>
+        </div>
+    </div>
+</div>
+
 <!-- Photo Modal -->
 <div class="photo-modal" id="photoModal">
     <span class="modal-close" onclick="closePhotoModal()">×</span>
@@ -587,6 +601,8 @@ include 'layout/header.php';
 </div>
 
 <script>
+// Store the current attendance ID for rejection
+let currentAttendanceId = null;
 function openPhotoModal(imageSrc) {
     const modal = document.getElementById('photoModal');
     const modalImg = document.getElementById('modalImage');
@@ -598,10 +614,56 @@ function closePhotoModal() {
     document.getElementById('photoModal').classList.remove('active');
 }
 
-// Close photo modal on escape key
+function openRejectModal(attendanceId) {
+    currentAttendanceId = attendanceId;
+    document.getElementById('rejectionReason').value = '';
+    document.getElementById('rejectModal').classList.add('active');
+}
+
+function closeRejectModal() {
+    document.getElementById('rejectModal').classList.remove('active');
+    currentAttendanceId = null;
+}
+
+function submitRejection() {
+    const reason = document.getElementById('rejectionReason').value.trim();
+    if (!reason) {
+        alert('Please provide a reason for rejection');
+        return;
+    }
+
+    // Create and submit the form
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.style.display = 'none';
+
+    const attendanceInput = document.createElement('input');
+    attendanceInput.type = 'hidden';
+    attendanceInput.name = 'attendance_id';
+    attendanceInput.value = currentAttendanceId;
+
+    const actionInput = document.createElement('input');
+    actionInput.type = 'hidden';
+    actionInput.name = 'action';
+    actionInput.value = 'reject';
+
+    const reasonInput = document.createElement('input');
+    reasonInput.type = 'hidden';
+    reasonInput.name = 'rejection_reason';
+    reasonInput.value = reason;
+
+    form.appendChild(attendanceInput);
+    form.appendChild(actionInput);
+    form.appendChild(reasonInput);
+    document.body.appendChild(form);
+    form.submit();
+}
+
+// Close modals on escape key
 document.addEventListener('keydown', function(event) {
     if (event.key === 'Escape') {
         closePhotoModal();
+        closeRejectModal();
     }
 });
 </script>

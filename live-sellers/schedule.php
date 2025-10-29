@@ -12,7 +12,7 @@ $db = getDB();
 
 // Get initial attendance status
 $stmt = $db->prepare("
-    SELECT id, status
+    SELECT id, status, rejection_reason, approved_at, approved_by, created_at
     FROM attendance 
     WHERE seller_id = ? 
     AND attendance_date = CURDATE()
@@ -22,13 +22,9 @@ $stmt = $db->prepare("
 $stmt->execute([$current_user['id']]);
 $latest_attendance = $stmt->fetch();
 
-// Handle new submission request after rejection
-// Reset attendance check if specifically requested and last attendance was rejected
-if (isset($_GET['new_submission'])) {
-    if ($latest_attendance && $latest_attendance['status'] === 'rejected') {
-        $has_attendance_today = false;
-        $latest_attendance = null; // Clear the latest attendance to allow new submission
-    }
+// Treat rejected attendance same as pending/approved - no new submissions until reset time
+if ($latest_attendance && $latest_attendance['status'] === 'rejected') {
+    $has_attendance_today = true;
 }
 
 // Get today's date with different cutoffs based on what user submitted
@@ -72,7 +68,7 @@ if ($last_attendance) {
     
     // Check if user has any attendance for today
     $stmt = $db->prepare("
-        SELECT id, status
+        SELECT id, status, rejection_reason, approved_at, approved_by, created_at
         FROM attendance 
         WHERE seller_id = ? 
         AND attendance_date = ? 
@@ -347,7 +343,7 @@ include 'layout/header.php';
                     </a>
                 </div>
             </div>
-<?php elseif ($has_attendance_today || ($latest_attendance && $latest_attendance['status'] !== 'rejected') || ($latest_attendance && $latest_attendance['status'] === 'rejected' && !isset($_GET['new_submission']))): ?>
+        <?php elseif ($has_attendance_today || ($latest_attendance && $latest_attendance['status'] !== 'rejected') || ($latest_attendance && $latest_attendance['status'] === 'rejected' && !isset($_GET['new_submission']))): ?>
             <!-- Already Submitted Message -->
             <div class="attendance-form-wrapper">
                 <div class="attendance-form-card already-submitted">
@@ -374,7 +370,7 @@ include 'layout/header.php';
                             } elseif ($today_status === 'rejected') {
                                 $status_icon = '❌';
                                 $status_title = 'Attendance Rejected';
-                                $status_message = 'Your attendance submission was not approved. You can submit a new attendance.';
+                                $status_message = 'Your attendance submission was not approved.';
                                 $status_class = 'rejected';
                                 $show_resubmit = true;
                                 $has_attendance_today = false;  // Allow new submission for rejected status
@@ -384,22 +380,34 @@ include 'layout/header.php';
                             <div class="status-content">
                                 <h3><?php echo $status_title; ?></h3>
                                 <div class="status-summary">
-                                    <p class="main-message"><?php echo $status_message; ?></p>
-                                    <p class="date-info">Submitted on <span class="highlight-date"><?php echo date('F j, Y'); ?></span></p>
+                                    <?php if ($today_status === 'rejected'): ?>
+                                        <p class="main-message" style="color: #22c55e;"><?php echo $status_message; ?></p>
+                                        <?php if (!empty($latest_attendance['rejection_reason'])): ?>
+                                            <div class="rejection-reason-container" style="
+                                                border-radius: 8px;
+                                                padding: 12px 16px;
+                                                margin: 15px 0;
+                                            ">
+                                                <div style="
+                                                    color: #dc2626;
+                                                    font-weight: 600;
+                                                    margin-bottom: 4px;
+                                                ">Reason:</div>
+                                                <div style="
+                                                    color: #dc2626;
+                                                    font-size: 0.95em;
+                                                    line-height: 1.4;
+                                                "><?php echo htmlspecialchars($latest_attendance['rejection_reason']); ?></div>
+                                            </div>
+                                        <?php endif; ?>
+                                        <p class="date-info">Submitted on <span class="highlight-date"><?php echo isset($latest_attendance['created_at']) ? date('F j, Y', strtotime($latest_attendance['created_at'])) : date('F j, Y'); ?></span></p>
+                                    <?php else: ?>
+                                        <p class="main-message"><?php echo $status_message; ?></p>
+                                        <p class="date-info">Submitted on <span class="highlight-date"><?php echo isset($latest_attendance['created_at']) ? date('F j, Y', strtotime($latest_attendance['created_at'])) : date('F j, Y'); ?></span></p>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                         </div>
-                        
-                        <?php if ($latest_attendance && $latest_attendance['status'] === 'rejected'): ?>
-                        <div class="resubmit-section" style="text-align: center;">
-                            <div class="resubmit-message">
-                            </div>
-                            <a href="?new_submission=1" class="btn btn-primary btn-large resubmit-button" style="display: inline-flex; text-decoration: none; margin: 0 auto; justify-content: center; align-items: center; gap: 8px; padding: 12px 24px;">
-                                <span class="btn-icon">📝</span>
-                                Submit New Attendance
-                            </a>
-                        </div>
-                        <?php else: ?>
                         <div class="next-submission-info">
                             <div class="info-content-compact">
                                 <span class="info-icon">🕐</span>
@@ -422,7 +430,6 @@ include 'layout/header.php';
                                 </div>
                             </div>
                         </div>
-                        <?php endif; ?>
                     </div>
                     
                     <div class="form-footer">
@@ -432,7 +439,7 @@ include 'layout/header.php';
                                 <span class="btn-text">Return to Dashboard</span>
                                 <span class="btn-arrow">→</span>
                             </a>
-                            <p class="footer-note">Continue managing your schedule from the dashboard</p>
+
                         </div>
                     </div>
                 </div>
@@ -509,6 +516,7 @@ include 'layout/header.php';
                 <input type="hidden" id="custom_slot_data" name="custom_slot_data" value="">
             </form>
         </div>
+            </div>
         <?php endif; ?>
     </div>
 
