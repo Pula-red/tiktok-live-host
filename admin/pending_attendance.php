@@ -54,7 +54,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Get filter parameters
 $status_filter = $_GET['status'] ?? 'pending_approval';
-$date_filter = $_GET['date'] ?? date('Y-m-d');
+
+// Handle date based on current time and shift duration
+$current_time = new DateTime();
+$current_time_str = $current_time->format('H:i:s');
+
+// Check last submitted attendance duration to determine reset time
+$stmt = $db->prepare("
+    SELECT ats.duration_hours 
+    FROM attendance a
+    LEFT JOIN attendance_time_slots ats ON a.time_slot = ats.id
+    WHERE a.status != 'cancelled'
+    ORDER BY a.attendance_date DESC, a.created_at DESC
+    LIMIT 1
+");
+$stmt->execute();
+$last_duration = $stmt->fetch();
+
+// Set reset times based on duration
+if ($last_duration && $last_duration['duration_hours'] == 4) {
+    $reset_time = new DateTime('06:00:00');
+} else {
+    $reset_time = new DateTime('05:00:00');
+}
+
+// Convert times to timestamps for comparison
+$current_timestamp = strtotime($current_time_str);
+$reset_timestamp = strtotime($reset_time->format('H:i:s'));
+
+// Set default date based on reset time
+if ($current_timestamp < $reset_timestamp) {
+    // If current time is before reset time, show previous day
+    $default_date = date('Y-m-d', strtotime('-1 day'));
+} else {
+    // If current time is after or equal to reset time, show current day
+    $default_date = date('Y-m-d');
+}
+
+$date_filter = $_GET['date'] ?? $default_date;
+
+// Debug info
+error_log("Current time: $current_time_str, Reset time: " . $reset_time->format('H:i:s') . ", Default date: $default_date");
 
 // Fetch pending attendance records
 $query = "
