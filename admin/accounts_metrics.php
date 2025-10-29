@@ -44,7 +44,7 @@ foreach ($accounts as $acct) {
                     SELECT ats.duration_hours 
                     FROM attendance a
                     LEFT JOIN attendance_time_slots ats ON a.time_slot = ats.id
-                    WHERE a.seller_id = ? AND a.status != 'cancelled'
+                    WHERE a.seller_id = ? AND a.status = 'approved'
                     ORDER BY a.attendance_date DESC, a.created_at DESC
                     LIMIT 1
                 ");
@@ -74,7 +74,7 @@ foreach ($accounts as $acct) {
             $memberStmt = $db->prepare("
                 SELECT SUM(solds_quantity) as sales, SUM(hours_worked) as hours 
                 FROM attendance 
-                WHERE seller_id = ? AND attendance_date = ? AND status IN ('completed','checked_in')
+                WHERE seller_id = ? AND attendance_date = ? AND status = 'approved'
             ");
             $memberStmt->execute([$member_id, $member_today]);
             $memberData = $memberStmt->fetch();

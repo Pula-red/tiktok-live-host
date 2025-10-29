@@ -825,7 +825,7 @@ $accounts = $stmt->fetchAll();
                                         $sales_n = 0; $hours_n = 0.0;
                                         if (!empty($ids)) {
                                             $in = implode(',', array_fill(0, count($ids), '?'));
-                                            $q = $db->prepare("SELECT SUM(solds_quantity) as sales, SUM(hours_worked) as hours FROM attendance WHERE seller_id IN ($in) AND (attendance_date = ? OR DATE(created_at) = ?) AND status IN ('completed','checked_in')");
+                                            $q = $db->prepare("SELECT SUM(solds_quantity) as sales, SUM(hours_worked) as hours FROM attendance WHERE seller_id IN ($in) AND (attendance_date = ? OR DATE(created_at) = ?) AND status IN ('completed', 'checked_in', 'pending_approval', 'approved')");
                                             $params = $ids; $params[] = date('Y-m-d'); $params[] = date('Y-m-d');
                                             $q->execute($params);
                                             $r = $q->fetch();

@@ -24,7 +24,7 @@ if (isset($_GET['ajax_action']) && $_GET['ajax_action'] === 'get_seller_stats') 
             COALESCE(SUM(hours_worked), 0) as total_working_hours,
             COALESCE(SUM(solds_quantity), 0) as total_sales
         FROM attendance 
-        WHERE seller_id = ? AND status IN ('completed', 'checked_in')
+        WHERE seller_id = ? AND status = 'approved'
             AND attendance_date BETWEEN ? AND ?
     ");
     $stmt->execute([$seller_id, $current_period['start_date'], $current_period['end_date']]);
@@ -42,7 +42,7 @@ if (isset($_GET['ajax_action']) && $_GET['ajax_action'] === 'get_seller_stats') 
             COALESCE(SUM(a.solds_quantity), 0) as total_sales
         FROM users u
         LEFT JOIN attendance a ON u.id = a.seller_id 
-            AND a.status IN ('completed', 'checked_in')
+            AND a.status = 'approved'
             AND a.attendance_date BETWEEN ? AND ?
         WHERE u.role = 'live_seller' AND u.status = 'active'
         GROUP BY u.id, u.full_name, u.username, u.profile_image
@@ -132,7 +132,7 @@ $days_until_reset = get_days_until_reset();
 $stmt = $db->prepare("
     SELECT COUNT(DISTINCT attendance_date) as total_working_days 
     FROM attendance 
-    WHERE seller_id = ? AND status IN ('completed', 'checked_in')
+    WHERE seller_id = ? AND status = 'approved'
         AND attendance_date BETWEEN ? AND ?
 ");
 $stmt->execute([$current_user['id'], $current_period['start_date'], $current_period['end_date']]);
@@ -142,7 +142,7 @@ $user_working_days = $stmt->fetch()['total_working_days'] ?? 0;
 $stmt = $db->prepare("
     SELECT COALESCE(SUM(hours_worked), 0) as total_working_hours
     FROM attendance
-    WHERE seller_id = ? AND status IN ('completed', 'checked_in')
+    WHERE seller_id = ? AND status = 'approved'
         AND attendance_date BETWEEN ? AND ?
 ");
 $stmt->execute([$current_user['id'], $current_period['start_date'], $current_period['end_date']]);
@@ -152,7 +152,7 @@ $user_working_hours = $stmt->fetch()['total_working_hours'] ?? 0;
 $stmt = $db->prepare("
     SELECT COALESCE(SUM(solds_quantity), 0) as total_sales
     FROM attendance
-    WHERE seller_id = ? AND status IN ('completed', 'checked_in')
+    WHERE seller_id = ? AND status = 'approved'
         AND attendance_date BETWEEN ? AND ?
 ");
 $stmt->execute([$current_user['id'], $current_period['start_date'], $current_period['end_date']]);
@@ -170,7 +170,7 @@ $stmt = $db->prepare("
         COALESCE(SUM(a.solds_quantity), 0) as total_sales
     FROM users u
     LEFT JOIN attendance a ON u.id = a.seller_id 
-        AND a.status IN ('completed', 'checked_in')
+        AND a.status IN ('completed', 'checked_in', 'pending_approval', 'approved')
         AND a.attendance_date BETWEEN ? AND ?
     WHERE u.role = 'live_seller' AND u.status = 'active'
     GROUP BY u.id, u.full_name

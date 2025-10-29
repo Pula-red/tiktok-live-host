@@ -59,6 +59,17 @@ INSERT INTO `users` (`username`, `email`, `password`, `role`, `full_name`, `expe
 ('admin', 'admin@tiktok-live-host.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin', 'System Administrator', 'tenured', 'active');
 
 -- Attendance table (stores seller attendance / schedule submissions)
+/*
+Attendance Status Workflow:
+1. pending_approval: Initial state when attendance is submitted
+2. approved: Admin has reviewed and approved the attendance
+3. rejected: Admin has reviewed and rejected the attendance
+4. scheduled: Future scheduled attendance
+5. in_progress: Currently active attendance
+6. checked_in: User has checked in
+7. completed: Attendance completed (legacy status)
+8. cancelled: Attendance was cancelled
+*/
     CREATE TABLE `attendance` (
         `id` INT NOT NULL AUTO_INCREMENT,
         `seller_id` INT NOT NULL,
@@ -70,7 +81,10 @@ INSERT INTO `users` (`username`, `email`, `password`, `role`, `full_name`, `expe
         `total_sold_photo` varchar(255) DEFAULT NULL,
         `check_in_time` time DEFAULT NULL,
         `check_out_time` time DEFAULT NULL,
-        `status` enum('scheduled','in_progress','checked_in','completed','cancelled') NOT NULL DEFAULT 'scheduled',
+        `status` enum('pending_approval','approved','rejected','scheduled','in_progress','checked_in','completed','cancelled') NOT NULL DEFAULT 'pending_approval',
+        `approved_by` INT DEFAULT NULL,
+        `approved_at` timestamp NULL DEFAULT NULL,
+        `rejection_reason` text DEFAULT NULL,
         `notes` text DEFAULT NULL,
         `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
         `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -78,7 +92,10 @@ INSERT INTO `users` (`username`, `email`, `password`, `role`, `full_name`, `expe
         KEY `idx_seller_id` (`seller_id`),
         KEY `idx_attendance_date` (`attendance_date`),
         KEY `idx_status` (`status`),
-        FOREIGN KEY (`seller_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+        KEY `idx_attendance_approved_by` (`approved_by`),
+        KEY `idx_attendance_approval` (`status`, `attendance_date`),
+        FOREIGN KEY (`seller_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+        FOREIGN KEY (`approved_by`) REFERENCES `users`(`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci; 
 
         -- Accounts table: group sellers under an account (e.g., Snappyclo2nd)

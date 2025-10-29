@@ -39,7 +39,7 @@ $query = "
     FROM attendance a
     LEFT JOIN users u ON a.seller_id = u.id
     LEFT JOIN attendance_time_slots ats ON a.time_slot = ats.id
-    WHERE a.status IN ('completed', 'checked_in') 
+    WHERE a.status = 'approved'
     AND a.total_sold_photo IS NOT NULL
 ";
 
@@ -76,7 +76,7 @@ $stats_query = "
         DATE(MIN(a.attendance_date)) as earliest_date,
         DATE(MAX(a.attendance_date)) as latest_date
     FROM attendance a
-    WHERE a.status IN ('completed', 'checked_in') 
+    WHERE a.status = 'approved'
     AND a.total_sold_photo IS NOT NULL
 ";
 
@@ -418,8 +418,8 @@ include 'layout/header.php';
 
 <div class="attendance-photos-container">
     <div class="photos-header">
-        <h2>📸 Attendance Photos</h2>
-        <p>View all submitted attendance photos with sales data</p>
+        <h2>📸 Approved Attendance Photos</h2>
+        <p>View approved attendance submissions with verified sales data</p>
         
         <div class="stats-cards">
             <div class="stat-card">
@@ -534,8 +534,8 @@ include 'layout/header.php';
     <?php else: ?>
         <div class="no-results">
             <div class="no-results-icon">📭</div>
-            <h3>No Photos Found</h3>
-            <p>No attendance photos match your current filters. Try adjusting your search criteria.</p>
+            <h3>No Approved Photos Found</h3>
+            <p>No approved attendance photos match your current filters. Try adjusting your search criteria or check the pending submissions page.</p>
         </div>
     <?php endif; ?>
 </div>

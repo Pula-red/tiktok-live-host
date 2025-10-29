@@ -30,7 +30,7 @@ if (isset($_GET['ajax_action']) && $_GET['ajax_action'] === 'get_rankings') {
             COUNT(DISTINCT a.attendance_date) as working_days
         FROM users u
         LEFT JOIN attendance a ON u.id = a.seller_id 
-            AND a.status IN ('completed', 'checked_in')
+            AND a.status = 'approved'
             AND a.attendance_date BETWEEN :start_date AND :end_date
         WHERE u.role = 'live_seller' AND u.status = 'active'
         GROUP BY u.id, u.full_name, u.username, u.experienced_status, u.profile_image
@@ -88,7 +88,7 @@ $stmt = $db->prepare("
         COUNT(DISTINCT a.attendance_date) as working_days
     FROM users u
     LEFT JOIN attendance a ON u.id = a.seller_id 
-        AND a.status IN ('completed', 'checked_in')
+        AND a.status = 'approved'
         AND a.attendance_date BETWEEN :start_date AND :end_date
     WHERE u.role = 'live_seller' AND u.status = 'active'
     GROUP BY u.id, u.full_name, u.username, u.experienced_status, u.profile_image
@@ -127,7 +127,7 @@ include 'layout/header.php';
         <div class="dashboard-header">
             <div class="header-info">
                 <h1>Live Host Performance Dashboard</h1>
-                <p>Track and analyze live seller performance metrics</p>
+                <p>Track and analyze approved live seller performance metrics</p>
             </div>
             <div class="header-stats">
                 <div class="stat-badge">
@@ -199,7 +199,7 @@ include 'layout/header.php';
                     $memberStmt = $db->prepare("
                         SELECT SUM(solds_quantity) as sales, SUM(hours_worked) as hours 
                         FROM attendance 
-                        WHERE seller_id = ? AND attendance_date = ? AND status IN ('completed','checked_in')
+                        WHERE seller_id = ? AND attendance_date = ? AND status = 'approved'
                     ");
                     $memberStmt->execute([$member_id, $member_today]);
                     $memberData = $memberStmt->fetch();

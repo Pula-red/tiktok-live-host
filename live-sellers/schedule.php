@@ -10,6 +10,27 @@ $current_user = get_logged_in_user();
 // Get seller dashboard stats
 $db = getDB();
 
+// Get initial attendance status
+$stmt = $db->prepare("
+    SELECT id, status
+    FROM attendance 
+    WHERE seller_id = ? 
+    AND attendance_date = CURDATE()
+    ORDER BY created_at DESC 
+    LIMIT 1
+");
+$stmt->execute([$current_user['id']]);
+$latest_attendance = $stmt->fetch();
+
+// Handle new submission request after rejection
+// Reset attendance check if specifically requested and last attendance was rejected
+if (isset($_GET['new_submission'])) {
+    if ($latest_attendance && $latest_attendance['status'] === 'rejected') {
+        $has_attendance_today = false;
+        $latest_attendance = null; // Clear the latest attendance to allow new submission
+    }
+}
+
 // Get today's date with different cutoffs based on what user submitted
 // 3-hour shifts: Reset at 5:00 AM (5 AM - 5 AM cycle)
 // 4-hour shifts: Reset at 6:00 AM (6 AM - 6 AM cycle)
@@ -49,14 +70,29 @@ if ($last_attendance) {
         $today = date('Y-m-d');
     }
     
-    // Check if user has attendance for today (based on their duration's reset time)
+    // Check if user has any attendance for today
     $stmt = $db->prepare("
-        SELECT COUNT(*) as attendance_count 
-        FROM attendance a
-        WHERE a.seller_id = ? AND a.attendance_date = ? AND a.status != 'cancelled'
+        SELECT id, status
+        FROM attendance 
+        WHERE seller_id = ? 
+        AND attendance_date = ? 
+        ORDER BY created_at DESC 
+        LIMIT 1
     ");
     $stmt->execute([$current_user['id'], $today]);
-    $has_attendance_today = $stmt->fetchColumn() > 0;
+    $latest_attendance = $stmt->fetch();
+    
+    // Determine if user can submit new attendance
+    $has_attendance_today = false;
+    if ($latest_attendance) {
+        if ($latest_attendance['status'] === 'approved' || $latest_attendance['status'] === 'pending_approval') {
+            $has_attendance_today = true;
+        }
+        // If status is rejected, allow new submission
+        if ($latest_attendance['status'] === 'rejected') {
+            $has_attendance_today = false;
+        }
+    }
 } else {
     // No previous attendance, use default 5 AM reset (earliest slot)
     $reset_hour = 5;
@@ -138,10 +174,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $time_slot_id = $db->lastInsertId();
                     }
                     
-                    // Check if this seller already has this slot scheduled for the same date
+                    // Check if this seller already has this slot scheduled for the same date (excluding rejected)
                     $stmt = $db->prepare("
                         SELECT id FROM attendance 
-                        WHERE seller_id = ? AND attendance_date = ? AND time_slot = ?
+                        WHERE seller_id = ? 
+                        AND attendance_date = ? 
+                        AND time_slot = ? 
+                        AND status NOT IN ('rejected')
                     ");
                     $stmt->execute([$current_user['id'], $attendance_date, $time_slot_id]);
                     $existing_attendance = $stmt->fetch();
@@ -189,16 +228,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                         // Only insert if there is no validation error
                         if (empty($error_message)) {
-                            // Schedule the attendance into new table (persist hours_worked)
-                            // Set status to 'completed' since user is submitting with sold data and photo
-                            $stmt = $db->prepare("
-                                INSERT INTO attendance (seller_id, attendance_date, duration, time_slot, solds_quantity, total_sold_photo, hours_worked, status)
-                                VALUES (?, ?, ?, ?, ?, ?, ?, 'completed')
+                            // Check if there's any approved or pending attendance for today
+                            $check_stmt = $db->prepare("
+                                SELECT COUNT(*) 
+                                FROM attendance 
+                                WHERE seller_id = ? 
+                                AND attendance_date = ? 
+                                AND status IN ('approved', 'pending_approval')
+                                AND id NOT IN (
+                                    SELECT id FROM attendance 
+                                    WHERE seller_id = ? 
+                                    AND attendance_date = ? 
+                                    AND status = 'rejected'
+                                )
                             ");
-                            $stmt->execute([$current_user['id'], $attendance_date, $slot_data['duration'] . '-hour', $time_slot_id, $solds_qty, $photo_path, $hoursWorked]);
+                            $check_stmt->execute([$current_user['id'], $attendance_date, $current_user['id'], $attendance_date]);
+                            $has_active_attendance = $check_stmt->fetchColumn() > 0;
 
-                            // Set session flag for successful submission
-                            $_SESSION['attendance_submitted'] = true;
+                            if (!$has_active_attendance) {
+                                // Schedule the attendance into new table (persist hours_worked)
+                                // Set status to 'pending_approval' until admin approves
+                                $stmt = $db->prepare("
+                                    INSERT INTO attendance (seller_id, attendance_date, duration, time_slot, solds_quantity, total_sold_photo, hours_worked, status)
+                                    VALUES (?, ?, ?, ?, ?, ?, ?, 'pending_approval')
+                                ");
+                                $stmt->execute([$current_user['id'], $attendance_date, $slot_data['duration'] . '-hour', $time_slot_id, $solds_qty, $photo_path, $hoursWorked]);
+
+                                // Set session flag for successful submission
+                                $_SESSION['attendance_submitted'] = true;
+                            } else {
+                                $error_message = "You already have an approved or pending attendance for today.";
+                            }
 
                             // Redirect to prevent form resubmission
                             header('Location: ' . $_SERVER['REQUEST_URI']);
@@ -272,9 +332,14 @@ include 'layout/header.php';
         <?php if ($attendance_submitted): ?>
             <!-- Success Message with Dashboard Redirect -->
             <div class="attendance-success-card">
-                <div class="success-icon">✅</div>
+                <div class="success-icon">⏳</div>
                 <h2>Attendance Submitted Successfully!</h2>
-                <p>Your attendance has been recorded for today. Thank you for your submission.</p>
+                <p>Your attendance has been submitted and is pending admin approval. You will be notified once it's approved.</p>
+                <div class="pending-note">
+                    <p style="color: #666; margin-top: 10px; font-size: 0.9em;">
+                        Note: Your attendance needs to be approved by an admin before it's officially recorded.
+                    </p>
+                </div>
                 <div class="success-actions">
                     <a href="dashboard.php" class="btn btn-primary btn-large">
                         <span class="btn-icon">🏠</span>
@@ -282,40 +347,72 @@ include 'layout/header.php';
                     </a>
                 </div>
             </div>
-        <?php elseif ($has_attendance_today): ?>
+<?php elseif ($has_attendance_today || ($latest_attendance && $latest_attendance['status'] !== 'rejected') || ($latest_attendance && $latest_attendance['status'] === 'rejected' && !isset($_GET['new_submission']))): ?>
             <!-- Already Submitted Message -->
             <div class="attendance-form-wrapper">
                 <div class="attendance-form-card already-submitted">
                     <div class="form-body">
-                        <div class="attendance-status-display">
-                            <div class="status-icon-large">✅</div>
+                        <div class="attendance-status-display <?php echo htmlspecialchars($latest_attendance['status']); ?>">
+                            <?php
+                            $today_status = $latest_attendance['status'];
+                            $status_icon = '';
+                            $status_title = '';
+                            $status_message = '';
+                            $status_class = '';
+                            $show_resubmit = false;
+
+                            if ($today_status === 'pending_approval') {
+                                $status_icon = '⏳';
+                                $status_title = 'Attendance Pending Approval';
+                                $status_message = 'Your attendance is currently under review';
+                                $status_class = 'pending';
+                            } elseif ($today_status === 'approved') {
+                                $status_icon = '✅';
+                                $status_title = 'Attendance Approved';
+                                $status_message = 'Your daily attendance has been confirmed!';
+                                $status_class = 'approved';
+                            } elseif ($today_status === 'rejected') {
+                                $status_icon = '❌';
+                                $status_title = 'Attendance Rejected';
+                                $status_message = 'Your attendance submission was not approved. You can submit a new attendance.';
+                                $status_class = 'rejected';
+                                $show_resubmit = true;
+                                $has_attendance_today = false;  // Allow new submission for rejected status
+                            }
+                            ?>
+                            <div class="status-icon-large <?php echo $status_class; ?>"><?php echo $status_icon; ?></div>
                             <div class="status-content">
-                                <h3>Attendance Successfully Recorded</h3>
+                                <h3><?php echo $status_title; ?></h3>
                                 <div class="status-summary">
-                                    <p class="main-message">Your daily attendance has been confirmed!</p>
+                                    <p class="main-message"><?php echo $status_message; ?></p>
                                     <p class="date-info">Submitted on <span class="highlight-date"><?php echo date('F j, Y'); ?></span></p>
                                 </div>
                             </div>
                         </div>
                         
+                        <?php if ($latest_attendance && $latest_attendance['status'] === 'rejected'): ?>
+                        <div class="resubmit-section" style="text-align: center;">
+                            <div class="resubmit-message">
+                            </div>
+                            <a href="?new_submission=1" class="btn btn-primary btn-large resubmit-button" style="display: inline-flex; text-decoration: none; margin: 0 auto; justify-content: center; align-items: center; gap: 8px; padding: 12px 24px;">
+                                <span class="btn-icon">📝</span>
+                                Submit New Attendance
+                            </a>
+                        </div>
+                        <?php else: ?>
                         <div class="next-submission-info">
                             <div class="info-content-compact">
                                 <span class="info-icon">🕐</span>
                                 <div class="info-text">
                                     <?php 
                                     // Calculate next submission time based on submitted duration's reset time
-                                    // Since user has already submitted for "today" (based on their reset time),
-                                    // the next submission is always at the next reset time
                                     $current_hour = (int)date('H');
                                     
                                     if ($current_hour < $reset_hour) {
-                                        // Before reset time - but they already submitted for "today"
-                                        // So next submission is at the reset time (which marks the start of the actual calendar day)
                                         $actual_calendar_date = date('Y-m-d');
                                         $next_date = date('F j, Y', strtotime($actual_calendar_date));
                                         $next_day_text = "today";
                                     } else {
-                                        // After reset time - next submission is tomorrow at reset time
                                         $next_date = date('F j, Y', strtotime('+1 day'));
                                         $next_day_text = "tomorrow";
                                     }
@@ -325,6 +422,7 @@ include 'layout/header.php';
                                 </div>
                             </div>
                         </div>
+                        <?php endif; ?>
                     </div>
                     
                     <div class="form-footer">

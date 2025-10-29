@@ -132,6 +132,12 @@ $current_user = get_logged_in_user();
                         <span class="nav-icon">📸</span>
                         <span class="nav-text">Attendance Photos</span>
                     </a>
+                </li>
+                <li class="nav-item">
+                    <a href="pending_attendance.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'pending_attendance.php' ? 'active' : ''; ?>">
+                        <span class="nav-icon">✓</span>
+                        <span class="nav-text">Pending Attendance</span>
+                    </a>
                 </li>            
             </ul>
         </nav>
