@@ -100,6 +100,95 @@ if (isset($_POST['ajax']) && $_POST['ajax'] === '1' && isset($_POST['action'])) 
     }
 }
 
+// Handle AJAX request to calculate earnings
+if (isset($_POST['action']) && $_POST['action'] === 'calculate_earnings') {
+    header('Content-Type: application/json');
+    
+    try {
+        $user_id = intval($_POST['user_id'] ?? 0);
+        $pay_period = trim($_POST['pay_period'] ?? '');
+        
+        if ($user_id <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Invalid user ID']);
+            exit;
+        }
+        
+        if (empty($pay_period)) {
+            echo json_encode(['success' => false, 'message' => 'Pay period is required']);
+            exit;
+        }
+        
+        // Parse pay period (format: YYYY-MM-DD|YYYY-MM-DD)
+        $period_parts = explode('|', $pay_period);
+        if (count($period_parts) !== 2) {
+            echo json_encode(['success' => false, 'message' => 'Invalid pay period format. Expected: YYYY-MM-DD|YYYY-MM-DD']);
+            exit;
+        }
+        list($period_start, $period_end) = $period_parts;
+        
+        // Validate date formats
+        if (!strtotime($period_start) || !strtotime($period_end)) {
+            echo json_encode(['success' => false, 'message' => 'Invalid date format in pay period']);
+            exit;
+        }
+        
+        // Get user's hourly rate
+        $stmt = $db->prepare("SELECT hourly_rate, full_name FROM users WHERE id = ?");
+        $stmt->execute([$user_id]);
+        $user = $stmt->fetch();
+        
+        if (!$user) {
+            echo json_encode(['success' => false, 'message' => 'User not found']);
+            exit;
+        }
+        
+        // Calculate earnings from approved attendance (only hours × rate)
+        $stmt = $db->prepare("
+            SELECT 
+                SUM(hours_worked) as total_hours,
+                COUNT(*) as total_days
+            FROM attendance
+            WHERE seller_id = ?
+                AND attendance_date BETWEEN ? AND ?
+                AND status = 'approved'
+        ");
+        $stmt->execute([$user_id, $period_start, $period_end]);
+        $earnings = $stmt->fetch();
+        
+        $total_hours = floatval($earnings['total_hours'] ?? 0);
+        $total_days = intval($earnings['total_days'] ?? 0);
+        
+        // Use hourly_rate from database (125 for newbie, 166 for tenured)
+        $hourly_rate = floatval($user['hourly_rate'] ?? 166.00);
+        
+        // Calculate total earnings: hours × hourly rate only
+        $total_earnings = $total_hours * $hourly_rate;
+        
+        echo json_encode([
+            'success' => true,
+            'user_name' => $user['full_name'],
+            'total_hours' => $total_hours,
+            'total_hours_formatted' => number_format($total_hours, 1),
+            'total_days' => $total_days,
+            'hourly_rate' => $hourly_rate,
+            'hourly_rate_formatted' => number_format($hourly_rate, 0),
+            'total_earnings' => round($total_earnings, 2),
+            'total_earnings_formatted' => number_format($total_earnings, 0),
+            'breakdown_text' => sprintf(
+                '%.1f hours × ₱%s/hr = ₱%s',
+                $total_hours,
+                number_format($hourly_rate, 0),
+                number_format($total_earnings, 0)
+            )
+        ]);
+        exit;
+        
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => 'Server error: ' . $e->getMessage()]);
+        exit;
+    }
+}
+
 // Handle form submission (kept for backwards compatibility but won't be used with AJAX)
 $success_message = '';
 $error_message = '';
@@ -497,7 +586,8 @@ include 'layout/header.php';
                 <div class="form-group">
                     <label for="amount">Amount (₱) *</label>
                     <input type="number" id="amount" name="amount" 
-                           placeholder="0.00" step="0.01" min="0.01" required>
+                           placeholder="0.00" step="0.01" min="0.01" required readonly
+                           style="background-color: #f0fdf4; font-weight: 700; font-size: 1.1rem; color: #059669;">
                 </div>
             </div>
 
@@ -984,6 +1074,80 @@ include 'layout/header.php';
     height: auto;
     border-radius: 10px;
     border: 2px solid #e2e8f0;
+}
+
+.earnings-breakdown {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+    border: 2px solid #10b981;
+    border-radius: 10px;
+    margin-top: 0.75rem;
+    animation: slideIn 0.3s ease-out;
+}
+
+.breakdown-icon {
+    font-size: 2rem;
+    line-height: 1;
+}
+
+.breakdown-details {
+    flex: 1;
+}
+
+.breakdown-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #065f46;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.5rem;
+}
+
+.breakdown-text {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #047857;
+    margin-bottom: 0.5rem;
+}
+
+.breakdown-stats {
+    font-size: 0.8rem;
+    color: #059669;
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.breakdown-stats span,
+.breakdown-stat {
+    background: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-weight: 600;
+}
+
+.earnings-loading {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    background: #f0f9ff;
+    border-radius: 8px;
+    margin-top: 0.5rem;
+    color: #0369a1;
+    font-size: 0.875rem;
+}
+
+.spinner-small {
+    border: 2px solid #e0f2fe;
+    border-top: 2px solid #0369a1;
+    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    animation: spin 1s linear infinite;
 }
 
 .form-actions {
@@ -1541,6 +1705,14 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
+    
+    // Initialize earnings calculation on page load if user and pay period are set
+    const userSelect = document.getElementById('user_id');
+    const payPeriodInput = document.getElementById('pay_period');
+    
+    if (userSelect && payPeriodInput && userSelect.value && payPeriodInput.value) {
+        calculateEarnings();
+    }
 });
 
 function toggleForm() {
@@ -1611,10 +1783,75 @@ function updateUserInfo() {
         } else {
             viewQrBtn.style.display = 'none';
         }
+        
+        // Calculate earnings after displaying user info
+        calculateEarnings();
     } else {
         gcashInfo.style.display = 'none';
         viewQrBtn.style.display = 'none';
+        
+        // Clear amount field
+        document.getElementById('amount').value = '';
     }
+}
+
+function calculateEarnings() {
+    const userSelect = document.getElementById('user_id');
+    const payPeriodInput = document.getElementById('pay_period');
+    const amountInput = document.getElementById('amount');
+    
+    const userId = userSelect.value;
+    const payPeriod = payPeriodInput.value;
+    
+    if (!userId || !payPeriod) {
+        amountInput.value = '';
+        return;
+    }
+    
+    // Disable field while calculating
+    amountInput.disabled = true;
+    amountInput.style.opacity = '0.6';
+    amountInput.placeholder = 'Calculating...';
+    
+    // Fetch earnings data
+    const formData = new FormData();
+    formData.append('action', 'calculate_earnings');
+    formData.append('user_id', userId);
+    formData.append('pay_period', payPeriod);
+    
+    fetch(window.location.href, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok: ' + response.status);
+        }
+        return response.json();
+    })
+    .then(data => {
+        amountInput.disabled = false;
+        amountInput.style.opacity = '1';
+        amountInput.placeholder = '0.00';
+        
+        if (data.success) {
+            // Update amount field with UNFORMATTED number (no commas)
+            amountInput.value = data.total_earnings;
+            amountInput.style.color = '#059669';
+        } else {
+            amountInput.value = '0';
+            amountInput.style.color = '#dc2626';
+            alert('Failed to calculate earnings: ' + data.message);
+        }
+    })
+    .catch(error => {
+        amountInput.disabled = false;
+        amountInput.style.opacity = '1';
+        amountInput.placeholder = 'Error';
+        amountInput.value = '';
+        amountInput.style.color = '#dc2626';
+        alert('Network error: ' + error.message);
+    });
 }
 
 function previewImage(input) {
