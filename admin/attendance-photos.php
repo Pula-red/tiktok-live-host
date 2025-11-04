@@ -1,4 +1,9 @@
 <?php
+// Enable error reporting
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 require_once __DIR__ . '/../includes/functions.php';
 
 // Require admin role
@@ -8,7 +13,15 @@ require_role('admin');
 $current_user = get_logged_in_user();
 
 // Get database connection
-$db = getDB();
+try {
+    $db = getDB();
+} catch (PDOException $e) {
+    die("Database connection failed: " . $e->getMessage());
+}
+
+// Log current working directory and file path for debugging
+error_log("Current directory: " . __DIR__);
+error_log("Functions file path: " . __DIR__ . '/../includes/functions.php');
 
 // Get filter parameters
 $selected_user = $_GET['user_id'] ?? 'all';
@@ -63,9 +76,17 @@ if (!empty($selected_date)) {
 
 $query .= " ORDER BY a.attendance_date DESC, a.created_at DESC";
 
-$stmt = $db->prepare($query);
-$stmt->execute($params);
-$attendance_records = $stmt->fetchAll();
+try {
+    $stmt = $db->prepare($query);
+    if (!$stmt->execute($params)) {
+        error_log("Query execution failed: " . print_r($stmt->errorInfo(), true));
+        die("Query execution failed. Check error log for details.");
+    }
+    $attendance_records = $stmt->fetchAll();
+} catch (PDOException $e) {
+    error_log("Database error: " . $e->getMessage());
+    die("A database error occurred: " . $e->getMessage());
+}
 
 // Get statistics
 $stats_query = "

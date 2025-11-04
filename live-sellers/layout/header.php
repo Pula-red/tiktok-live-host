@@ -228,6 +228,28 @@ if (!empty($current_user['profile_image'])) {
                     </a>
                 </li>
                 
+                <li class="nav-section-title">Payment</li>
+                <li class="nav-item">
+                    <a href="gcash-qr.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'gcash-qr.php' ? 'active' : ''; ?>">
+                        <span class="nav-icon">💳</span>
+                        <span class="nav-text">GCash QR Code</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="payment-history.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'payment-history.php' ? 'active' : ''; ?>">
+                        <span class="nav-icon">💰</span>
+                        <span class="nav-text">Payment History</span>
+                    </a>
+                </li>
+                
+                <li class="nav-section-title">Reports</li>
+                <li class="nav-item">
+                    <a href="history.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'history.php' ? 'active' : ''; ?>">
+                        <span class="nav-icon">📊</span>
+                        <span class="nav-text">History</span>
+                    </a>
+                </li>
+                
             </ul>
         </nav>
 

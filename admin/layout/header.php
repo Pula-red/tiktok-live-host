@@ -138,6 +138,20 @@ $current_user = get_logged_in_user();
                         <span class="nav-icon">✓</span>
                         <span class="nav-text">Pending Attendance</span>
                     </a>
+                </li>
+                
+                <li class="nav-section-title">Payment</li>
+                <li class="nav-item">
+                    <a href="host-payments.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'host-payments.php' ? 'active' : ''; ?>">
+                        <span class="nav-icon">💰</span>
+                        <span class="nav-text">Host Payments</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="gcash-qr-codes.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'gcash-qr-codes.php' ? 'active' : ''; ?>">
+                        <span class="nav-icon">💳</span>
+                        <span class="nav-text">GCash QR Codes</span>
+                    </a>
                 </li>            
             </ul>
         </nav>

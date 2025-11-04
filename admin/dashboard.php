@@ -14,9 +14,112 @@ $db = getDB();
 $current_period = get_current_pay_period();
 $days_until_reset = get_days_until_reset();
 
+// Check if filtering by specific pay period
+$selected_period = null;
+if (isset($_GET['period'])) {
+    $period_parts = explode('|', $_GET['period']);
+    if (count($period_parts) === 2) {
+        $selected_period = [
+            'start_date' => $period_parts[0],
+            'end_date' => $period_parts[1],
+            'period_name' => date('F j', strtotime($period_parts[0])) . ' - ' . date('j, Y', strtotime($period_parts[1]))
+        ];
+        $current_period = $selected_period;
+    }
+}
+
+// Generate available pay periods (last 6 months)
+function generate_pay_periods($months_back = 6) {
+    $periods = [];
+    $current_date = new DateTime();
+    
+    for ($i = 0; $i < $months_back; $i++) {
+        $year = $current_date->format('Y');
+        $month = $current_date->format('m');
+        $month_name = $current_date->format('F');
+        
+        // First period: 1-15
+        $periods[] = [
+            'start_date' => "$year-$month-01",
+            'end_date' => "$year-$month-15",
+            'label' => "$month_name 1-15, $year",
+            'value' => "$year-$month-01|$year-$month-15"
+        ];
+        
+        // Second period: 16-end of month
+        $last_day = $current_date->format('t');
+        $periods[] = [
+            'start_date' => "$year-$month-16",
+            'end_date' => "$year-$month-$last_day",
+            'label' => "$month_name 16-$last_day, $year",
+            'value' => "$year-$month-16|$year-$month-$last_day"
+        ];
+        
+        // Move to previous month
+        $current_date->modify('-1 month');
+    }
+    
+    return $periods;
+}
+
+// Generate available years, months, and periods for the hierarchical selector
+function generate_hierarchical_periods($years_back = 2) {
+    $periods_data = [];
+    $current_date = new DateTime();
+    
+    // Generate data for the last X years
+    for ($y = 0; $y <= $years_back; $y++) {
+        $year = (int)$current_date->format('Y') - $y;
+        $periods_data[$year] = [];
+        
+        // Determine which months to include
+        $start_month = ($year == (int)date('Y')) ? (int)date('m') : 12;
+        
+        for ($m = $start_month; $m >= 1; $m--) {
+            $month_name = date('F', mktime(0, 0, 0, $m, 1));
+            $last_day = date('t', mktime(0, 0, 0, $m, 1, $year));
+            
+            $periods_data[$year][$m] = [
+                'name' => $month_name,
+                'periods' => [
+                    [
+                        'label' => '1-15',
+                        'start_date' => sprintf('%d-%02d-01', $year, $m),
+                        'end_date' => sprintf('%d-%02d-15', $year, $m),
+                        'value' => sprintf('%d-%02d-01|%d-%02d-15', $year, $m, $year, $m)
+                    ],
+                    [
+                        'label' => '16-' . $last_day,
+                        'start_date' => sprintf('%d-%02d-16', $year, $m),
+                        'end_date' => sprintf('%d-%02d-%s', $year, $m, $last_day),
+                        'value' => sprintf('%d-%02d-16|%d-%02d-%s', $year, $m, $year, $m, $last_day)
+                    ]
+                ]
+            ];
+        }
+    }
+    
+    return $periods_data;
+}
+
+$hierarchical_periods = generate_hierarchical_periods();
+
 // AJAX endpoint for performance rankings
 if (isset($_GET['ajax_action']) && $_GET['ajax_action'] === 'get_rankings') {
     header('Content-Type: application/json');
+    
+    // Use the same period logic for AJAX requests
+    $ajax_period = $current_period;
+    if (isset($_GET['period'])) {
+        $period_parts = explode('|', $_GET['period']);
+        if (count($period_parts) === 2) {
+            $ajax_period = [
+                'start_date' => $period_parts[0],
+                'end_date' => $period_parts[1],
+                'period_name' => date('F j', strtotime($period_parts[0])) . ' - ' . date('j, Y', strtotime($period_parts[1]))
+            ];
+        }
+    }
     
     $stmt = $db->prepare("
         SELECT 
@@ -37,8 +140,8 @@ if (isset($_GET['ajax_action']) && $_GET['ajax_action'] === 'get_rankings') {
         ORDER BY total_sales DESC, total_hours DESC
     ");
     $stmt->execute([
-        ':start_date' => $current_period['start_date'],
-        ':end_date' => $current_period['end_date']
+        ':start_date' => $ajax_period['start_date'],
+        ':end_date' => $ajax_period['end_date']
     ]);
     $user_rankings = $stmt->fetchAll();
     
@@ -280,19 +383,42 @@ include 'layout/header.php';
             <div class="ranking-card">  
             <div class="card-header">
                 <div class="title-section">
-                    <h2>🏆 Performance Rankings</h2>
+                    <h2>🏆 Sales Rankings</h2>
                     <p>Sorted by highest total sales</p>
                 </div>
                 
-                <!-- Pay Period Info - Integrated in Header -->
+                <!-- Pay Period Selector and Info -->
                 <div class="header-period-info">
+                    <div class="period-selector-container">
+                        <div class="period-selector-wrapper">
+                            <label class="period-selector-label">📊 PAY PERIOD:</label>
+                            <div class="cascading-selectors">
+                                <select id="year-selector" class="period-dropdown">
+                                    <option value="">Current Period</option>
+                                    <?php foreach ($hierarchical_periods as $year => $months): ?>
+                                        <option value="<?php echo $year; ?>"><?php echo $year; ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                                
+                                <select id="month-selector" class="period-dropdown" style="display: none;">
+                                    <option value="">Select Month</option>
+                                </select>
+                                
+                                <select id="period-selector" class="period-dropdown" style="display: none;">
+                                    <option value="">Select Period</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <div class="period-badge">
                         <div class="period-icon-small">📅</div>
                         <div class="period-text">
-                            <span class="period-label">Current Period:</span>
+                            <span class="period-label"><?php echo $selected_period ? 'Selected Period:' : 'Current Period:'; ?></span>
                             <span class="period-value"><?php echo $current_period['period_name']; ?></span>
                         </div>
                     </div>
+                    
                     <div class="period-countdown-small">
                         <div class="countdown-number"><?php echo $days_until_reset; ?></div>
                         <div class="countdown-text">day<?php echo $days_until_reset != 1 ? 's' : ''; ?> left</div>
@@ -399,6 +525,152 @@ include 'layout/header.php';
 </div>
 
 <style>
+/* Period Selector Styling */
+.period-selector-container {
+    display: flex;
+    align-items: stretch;
+    padding: 0.5rem 0.85rem;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2));
+    border: 1px solid rgba(102, 126, 234, 0.4);
+    border-radius: 10px;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+}
+
+.period-selector-container:hover {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.25), rgba(118, 75, 162, 0.25));
+    border-color: rgba(102, 126, 234, 0.5);
+}
+
+.period-selector-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+}
+
+.period-selector-label {
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.9);
+    white-space: nowrap;
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    text-align: left;
+}
+
+.cascading-selectors {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.period-dropdown {
+    padding: 0.45rem 1.8rem 0.45rem 0.75rem;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 7px;
+    color: white;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 110px;
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 0.5rem center;
+    background-size: 1em;
+}
+
+.period-dropdown:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.period-dropdown:focus {
+    outline: none;
+    background: rgba(255, 255, 255, 0.18);
+    border-color: rgba(102, 126, 234, 0.6);
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+}
+
+.period-dropdown option {
+    background: #2c3e50;
+    color: white;
+    padding: 0.5rem;
+}
+
+.period-dropdown optgroup {
+    background: #1a252f;
+    color: rgba(255, 255, 255, 0.6);
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+/* Adjust header period info to accommodate selector */
+.header-period-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+    .header-period-info {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+    
+    .period-selector-container {
+        width: 100%;
+    }
+    
+    .cascading-selectors {
+        flex: 1;
+        width: 100%;
+    }
+    
+    .period-dropdown {
+        flex: 1;
+        min-width: 0;
+    }
+}
+
+@media (max-width: 768px) {
+    .period-selector-container {
+        width: 100%;
+    }
+    
+    .period-selector-wrapper {
+        width: 100%;
+    }
+    
+    .period-selector-label {
+        text-align: left;
+    }
+    
+    .cascading-selectors {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .period-dropdown {
+        width: 100%;
+    }
+    
+    .header-period-info {
+        width: 100%;
+    }
+    
+    .period-badge {
+        width: 100%;
+    }
+}
+
 /* Date Filter Container Styling */
 .date-filter-container {
     display: flex;
@@ -550,6 +822,129 @@ include 'layout/header.php';
 <?php include 'layout/footer.php'; ?>
 
 <script>
+// Hierarchical periods data from PHP
+const periodsData = <?php echo json_encode($hierarchical_periods); ?>;
+
+// Get selector elements
+const yearSelector = document.getElementById('year-selector');
+const monthSelector = document.getElementById('month-selector');
+const periodSelector = document.getElementById('period-selector');
+
+let selectedYear = null;
+let selectedMonth = null;
+
+// Year selector handler
+yearSelector.addEventListener('change', function() {
+    const year = this.value;
+    
+    if (!year) {
+        // Reset to current period
+        monthSelector.style.display = 'none';
+        periodSelector.style.display = 'none';
+        monthSelector.value = '';
+        periodSelector.value = '';
+        
+        // Reload page without period parameter
+        const currentUrl = new URL(window.location.href);
+        currentUrl.searchParams.delete('period');
+        window.location.href = currentUrl.toString();
+        return;
+    }
+    
+    selectedYear = year;
+    
+    // Populate month selector
+    monthSelector.innerHTML = '<option value="">Select Month</option>';
+    const months = periodsData[year];
+    
+    for (const [monthNum, monthData] of Object.entries(months)) {
+        const option = document.createElement('option');
+        option.value = monthNum;
+        option.textContent = monthData.name;
+        monthSelector.appendChild(option);
+    }
+    
+    // Show month selector, hide period selector
+    monthSelector.style.display = 'block';
+    periodSelector.style.display = 'none';
+    periodSelector.value = '';
+});
+
+// Month selector handler
+monthSelector.addEventListener('change', function() {
+    const month = this.value;
+    
+    if (!month || !selectedYear) {
+        periodSelector.style.display = 'none';
+        periodSelector.value = '';
+        return;
+    }
+    
+    selectedMonth = month;
+    
+    // Populate period selector
+    periodSelector.innerHTML = '<option value="">Select Period</option>';
+    const periods = periodsData[selectedYear][month].periods;
+    
+    periods.forEach(period => {
+        const option = document.createElement('option');
+        option.value = period.value;
+        option.textContent = period.label;
+        periodSelector.appendChild(option);
+    });
+    
+    // Show period selector
+    periodSelector.style.display = 'block';
+});
+
+// Period selector handler (final selection)
+periodSelector.addEventListener('change', function() {
+    const selectedValue = this.value;
+    
+    if (!selectedValue) return;
+    
+    const currentUrl = new URL(window.location.href);
+    currentUrl.searchParams.set('period', selectedValue);
+    window.location.href = currentUrl.toString();
+});
+
+// Initialize selectors if there's a selected period
+<?php if ($selected_period): ?>
+    // Parse the current period to set the dropdowns
+    const currentPeriod = '<?php echo $selected_period['start_date'] . '|' . $selected_period['end_date']; ?>';
+    const [startDate] = currentPeriod.split('|');
+    const [year, month] = startDate.split('-');
+    
+    // Set year
+    yearSelector.value = year;
+    selectedYear = year;
+    
+    // Populate and set month
+    const months = periodsData[year];
+    monthSelector.innerHTML = '<option value="">Select Month</option>';
+    for (const [monthNum, monthData] of Object.entries(months)) {
+        const option = document.createElement('option');
+        option.value = monthNum;
+        option.textContent = monthData.name;
+        if (monthNum == month) option.selected = true;
+        monthSelector.appendChild(option);
+    }
+    monthSelector.style.display = 'block';
+    selectedMonth = month;
+    
+    // Populate and set period
+    const periods = periodsData[year][month].periods;
+    periodSelector.innerHTML = '<option value="">Select Period</option>';
+    periods.forEach(period => {
+        const option = document.createElement('option');
+        option.value = period.value;
+        option.textContent = period.label;
+        if (period.value === currentPeriod) option.selected = true;
+        periodSelector.appendChild(option);
+    });
+    periodSelector.style.display = 'block';
+<?php endif; ?>
+
 // Current filter date
 let currentFilterDate = null;
 let pollingInterval = null;
@@ -689,11 +1084,23 @@ document.getElementById('reset-date-filter').addEventListener('click', function(
 
 // initial fetch and periodic polling (every 3 seconds for near real-time updates)
 fetchAccountsMetrics();
+// Only enable polling if viewing current period (not historical)
+<?php if (!$selected_period): ?>
 pollingInterval = setInterval(fetchAccountsMetrics, 3000);
+<?php endif; ?>
 
 // Refresh Performance Rankings via AJAX
 function refreshPerformanceRankings() {
-    fetch('dashboard.php?ajax_action=get_rankings')
+    const currentUrl = new URL(window.location.href);
+    const ajaxUrl = new URL('dashboard.php', window.location.origin + window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/')));
+    ajaxUrl.searchParams.set('ajax_action', 'get_rankings');
+    
+    // Pass the period parameter if it exists
+    if (currentUrl.searchParams.has('period')) {
+        ajaxUrl.searchParams.set('period', currentUrl.searchParams.get('period'));
+    }
+    
+    fetch(ajaxUrl.toString())
         .then(r => r.json())
         .then(data => {
             if (!data.success || !data.rankings) return;
@@ -808,5 +1215,8 @@ function formatNumber(num, decimals) {
 
 // Start periodic refresh for performance rankings (every 10 seconds)
 refreshPerformanceRankings();
+// Only enable auto-refresh if viewing current period (not historical)
+<?php if (!$selected_period): ?>
 setInterval(refreshPerformanceRankings, 10000);
+<?php endif; ?>
 </script>

@@ -397,6 +397,7 @@ include 'layout/header.php';
     padding: 0.75rem 1.5rem;
     border: 1px solid #e2e8f0;
     background: white;
+    color: #000000;
     border-radius: 6px;
     cursor: pointer;
 }
