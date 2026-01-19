@@ -1,0 +1,142 @@
+/* Gray Theme Overrides - apply last to neutralize color accents */
+:root {
+    --gray-900: #0f1112; /* dark gray base (was black) */
+    --gray-800: #0b0d0e;
+    --gray-700: #141617;
+    --gray-600: #232526;
+    --muted-white: rgba(255,255,255,0.06);
+}
+
+/* General background and text adjustments */
+body, .main-content, .hero-bg, .hero {
+    background-color: var(--gray-900) !important;
+    color: #e6e6e6 !important;
+}
+
+/* Replace colorful gradients with subtle gray gradients */
+.logo-icon, .feature-icon, .login-icon, .user-avatar, .profile-placeholder {
+    background: linear-gradient(135deg, var(--gray-700), var(--gray-600)) !important;
+    box-shadow: 0 4px 12px rgba(255,255,255,0.04) !important;
+    color: #fff !important;
+}
+
+/* Nav links and active states */
+.nav-links a:hover, .nav-link:hover {
+    color: #ffffff !important;
+    background: rgba(255,255,255,0.03) !important;
+}
+.nav-link.active {
+    background: rgba(255,255,255,0.035) !important;
+    color: #fff !important;
+    box-shadow: 0 0 8px rgba(255,255,255,0.04) !important;
+}
+
+/* Buttons and CTAs */
+.btn-primary, .login-btn, .cta-primary, .resubmit-button {
+    background: linear-gradient(135deg, var(--gray-700), var(--gray-600)) !important;
+    color: #fff !important;
+    border: 1px solid rgba(255,255,255,0.04) !important;
+    box-shadow: 0 6px 20px rgba(255,255,255,0.04) !important;
+}
+.btn-primary:hover, .login-btn:hover, .cta-primary:hover, .resubmit-button:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 8px 28px rgba(255,255,255,0.05) !important;
+}
+
+/* Cards, tables and panels */
+.card, .account-card, .users-table-card, .feature-card, .login-form-wrapper {
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)) !important;
+    border: 1px solid rgba(255,255,255,0.04) !important;
+}
+
+/* Remove colorful alerts, use muted gray outlines */
+.alert-error { background: rgba(255,255,255,0.02) !important; border: 1px solid rgba(255,255,255,0.04) !important; color: #ffb3b3 !important; }
+.alert-success { background: rgba(255,255,255,0.02) !important; border: 1px solid rgba(255,255,255,0.04) !important; color: #bfffbf !important; }
+
+/* Badges and status pills to grayscale */
+.badge, .exp-badge, .status-badge { background: rgba(255,255,255,0.03) !important; color: #e6e6e6 !important; border: 1px solid rgba(255,255,255,0.04) !important; }
+.badge-admin, .badge-live_seller, .badge-newbie, .badge-tenured { background: rgba(255,255,255,0.03) !important; color: #d0d0d0 !important; border-color: rgba(255,255,255,0.04) !important; }
+
+/* Scrollbars: subtle light thumb */
+*::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.05) !important; }
+
+/* Inputs focus - neutral glow */
+input:focus, select:focus, textarea:focus { box-shadow: 0 0 0 3px rgba(255,255,255,0.03) !important; border-color: rgba(255,255,255,0.08) !important; }
+
+/* Replace localized colorful text-fill gradients */
+.hero-title span, .section-title, .feature-title { background: linear-gradient(135deg,#1b1b1b,#2a2a2a) !important; -webkit-background-clip: text !important; -webkit-text-fill-color: transparent !important; background-clip: text !important; }
+
+/* Subtle highlight for top performers */
+.table-row.top-performer { background: linear-gradient(90deg, rgba(255,255,255,0.03), transparent) !important; border-left-color: #4f4f4f !important; }
+
+/* Ensure any leftover neon/glow removed */
+[style*="rgba(102, 126, 234,"], [style*="#667eea"], [style*="#764ba2"] { box-shadow: none !important; }
+
+/* Final safety: convert bright colored text to muted grays */
+*[style*="#ff"], *[style*="#ff4b"], *[style*="#ff1a"], *[style*="#00f2fe"], *[style*="#6b5cff"] { color: #d0d0d0 !important; background: transparent !important; }
+
+/* Keep some depth: subtle outer shadows */
+.feature-card:hover, .account-card:hover { box-shadow: 0 10px 30px rgba(0,0,0,0.75) !important; }
+
+/* End of gray theme overrides */
+
+/* Sidebar-specific gray overrides for admin and live-seller layouts */
+.admin-layout .sidebar,
+.live-seller-layout .sidebar {
+    background: linear-gradient(180deg, var(--gray-800), var(--gray-900)) !important;
+    border-right: 1px solid rgba(255,255,255,0.06) !important;
+    box-shadow: 6px 0 28px rgba(0,0,0,0.7), inset 0 0 20px rgba(255,255,255,0.01) !important;
+}
+
+.admin-layout .sidebar-header,
+.live-seller-layout .sidebar-header {
+    background: linear-gradient(180deg, rgba(255,255,255,0.01), var(--gray-800)) !important;
+    border-bottom: 1px solid rgba(255,255,255,0.05) !important;
+}
+
+.admin-layout .sidebar .logo-icon,
+.live-seller-layout .sidebar .logo-icon {
+    background: linear-gradient(135deg, var(--gray-700), var(--gray-600)) !important;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.6) !important;
+    border: 1px solid rgba(255,255,255,0.03) !important;
+    color: #ffffff !important;
+}
+
+.admin-layout .sidebar-footer .user-avatar,
+.live-seller-layout .sidebar-footer .user-avatar {
+    background: linear-gradient(135deg, var(--gray-700), var(--gray-600)) !important;
+    border: 1px solid rgba(255,255,255,0.04) !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.6) !important;
+}
+
+.admin-layout .nav-link,
+.live-seller-layout .nav-link {
+    color: rgba(255,255,255,0.72) !important;
+}
+
+.admin-layout .nav-link:hover,
+.live-seller-layout .nav-link:hover {
+    background: rgba(255,255,255,0.03) !important;
+    color: #fff !important;
+}
+
+.admin-layout .nav-link.active,
+.live-seller-layout .nav-link.active {
+    background: rgba(255,255,255,0.045) !important;
+    color: #ffffff !important;
+    box-shadow: 0 0 10px rgba(255,255,255,0.03) !important;
+}
+
+.admin-layout .nav-link.active::before,
+.live-seller-layout .nav-link.active::before {
+    content: '' !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    width: 6px !important;
+    height: 70% !important;
+    background: linear-gradient(180deg,#7a7a7a,#4f4f4f) !important;
+    border-radius: 0 4px 4px 0 !important;
+}
+

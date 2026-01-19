@@ -7,7 +7,7 @@ define('DB_PASS', '');
 define('DB_CHARSET', 'utf8mb4');
 
 // Application configuration
-define('SITE_NAME', 'TikTok Live Host Team');
+define('SITE_NAME', 'Live Host Team');
 define('SITE_URL', 'http://localhost/tiktok-live-host');        
 define('SITE_ROOT', dirname(__DIR__));
 

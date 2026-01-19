@@ -642,7 +642,7 @@ include __DIR__ . '/layout/header.php';
         <div class="header-icon">👥</div>
         <div class="header-content">
             <h1>Create New User</h1>
-            <p>Add new users to your TikTok Live Host Team.</p>
+            <p>Add new users to your Live Host Team.</p>
         </div>
     </div>
 

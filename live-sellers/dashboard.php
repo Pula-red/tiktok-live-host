@@ -567,7 +567,7 @@ include 'layout/header.php';
 
 <style>
 /* Profile badge: rounded square gradient similar to attachments */
-.profile-badge{width:56px;height:56px;border-radius:12px;flex:0 0 56px;overflow:hidden;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#6b5cff 0%,#8b62f2 50%,#6b9bff 100%);box-shadow:0 6px 18px rgba(66,57,129,0.25);}
+.profile-badge{width:56px;height:56px;border-radius:12px;flex:0 0 56px;overflow:hidden;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#2a2a2a 0%,#3a3a3a 50%,#222323 100%);box-shadow:0 6px 18px rgba(0,0,0,0.45);}
 .profile-badge-img{width:100%;height:100%;object-fit:cover;display:block}
 .profile-badge-placeholder{width:100%;height:100%;display:flex;align-items:center;justify-content:center}
 .profile-initial{color:#fff;font-weight:700;font-size:20px;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.4))}

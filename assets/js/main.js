@@ -1,4 +1,4 @@
-// Modern TikTok Live Host Agency JavaScript
+// Modern Live Host Agency JavaScript
 document.addEventListener('DOMContentLoaded', function() {
     // Smooth scrolling for navigation links
     const navLinks = document.querySelectorAll('a[href^="#"]');

@@ -39,8 +39,21 @@ $csrf_token = generate_csrf_token();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - <?php echo SITE_NAME; ?></title>
     <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/gray-theme.css?v=<?php echo time(); ?>">
     <link rel="stylesheet" href="assets/css/login.css">
     <link rel="icon" href="assets/images/favicon.ico" type="image/x-icon">
+    <style>
+        /* Login page: gradient gray background while keeping the form card black */
+        .hero-bg {
+            background: linear-gradient(180deg, #2b2b2b 0%, #525252 60%, #808080 100%) !important;
+            filter: none !important;
+        }
+        .login-form-wrapper {
+            background: #0b0b0b !important;
+            border: 1px solid rgba(255,255,255,0.06) !important;
+            z-index: 3;
+        }
+    </style>
 </head>
 <body>
     <!-- Animated Background -->
@@ -61,7 +74,6 @@ $csrf_token = generate_csrf_token();
     <main class="login-container">
         <div class="login-form-wrapper">
             <div class="login-header">
-                <div class="login-icon">🔐</div>
                 <h1>Welcome Back</h1>
                 <p>Sign in to your account to continue</p>
             </div>
@@ -107,7 +119,6 @@ $csrf_token = generate_csrf_token();
                         autocomplete="current-password"
                         placeholder="Enter your password"
                     >
-                    <div class="form-icon">🔒</div>
                     <button type="button" class="password-toggle" onclick="togglePassword()">👁️</button>
                 </div>
 

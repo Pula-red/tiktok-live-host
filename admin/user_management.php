@@ -101,7 +101,7 @@ include __DIR__ . '/layout/header.php';
             <div class="header-icon">👥</div>
             <div class="header-text">
                 <h1>User Management</h1>
-                <p>Manage live sellers in your TikTok Live Host Team</p>
+                <p>Manage live sellers in your Live Host Team</p>
             </div>
         </div>
         <div class="header-actions">

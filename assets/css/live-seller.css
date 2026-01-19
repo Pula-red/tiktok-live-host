@@ -5,8 +5,8 @@
 /* Sidebar Container */
 .live-seller-layout .sidebar {
     width: 280px;
-    background: linear-gradient(180deg, #1a1d2e 0%, #16171f 100%) !important;
-    border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+    background: #000000 !important;
+    border-right: 1px solid rgba(255, 255, 255, 0.06) !important;
     position: fixed;
     left: 0;
     top: 0;
@@ -25,7 +25,7 @@
     padding: 1.25rem 1.25rem;
     border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
     flex-shrink: 0;
-    background: rgba(20, 22, 32, 0.5);
+    background: #000000;
 }
 
 /* Logo Container */
@@ -45,19 +45,19 @@
 .live-seller-layout .sidebar .logo-icon {
     width: 42px;
     height: 42px;
-    background: linear-gradient(135deg, #2a2a2a, #3a3a3a) !important;
+    background: linear-gradient(135deg, #1b1b1b, #2a2a2a) !important;
     border-radius: 11px;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 1.3rem;
-    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1) !important;
+    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.04) !important;
     transition: all 0.3s ease;
 }
 
 .live-seller-layout .sidebar .logo:hover .logo-icon {
     transform: scale(1.05);
-    box-shadow: 0 6px 20px rgba(255, 255, 255, 0.15) !important;
+    box-shadow: 0 6px 20px rgba(255, 255, 255, 0.06) !important;
 }
 
 /* Logo Text */
@@ -74,7 +74,7 @@
     flex: 1;
     overflow-y: auto;
     scrollbar-width: thin;
-    scrollbar-color: rgba(102, 126, 234, 0.2) transparent;
+    scrollbar-color: rgba(255,255,255,0.06) transparent;
 }
 
 .live-seller-layout .sidebar-nav::-webkit-scrollbar {
@@ -138,8 +138,8 @@
 }
 
 .live-seller-layout .nav-link:hover {
-    background: rgba(102, 126, 234, 0.1) !important;
-    color: rgba(255, 255, 255, 0.9) !important;
+    background: rgba(255,255,255,0.03) !important;
+    color: rgba(255, 255, 255, 0.95) !important;
 }
 
 .live-seller-layout .nav-link:hover .nav-icon {
@@ -148,9 +148,9 @@
 
 /* Active Navigation Link - Purple Background with Blue Accent */
 .live-seller-layout .nav-link.active {
-    background: rgba(102, 126, 234, 0.15) !important;
-    color: #8b94e7 !important;
-    box-shadow: 0 0 15px rgba(102, 126, 234, 0.1) !important;
+    background: rgba(255,255,255,0.035) !important;
+    color: var(--light-text) !important;
+    box-shadow: 0 0 10px rgba(255,255,255,0.04) !important;
 }
 
 .live-seller-layout .nav-link.active::before {
@@ -161,14 +161,14 @@
     transform: translateY(-50%);
     width: 4px;
     height: 60%;
-    background: linear-gradient(180deg, #555555, #777777) !important;
+    background: linear-gradient(180deg, #4a4a4a, #6a6a6a) !important;
     border-radius: 0 4px 4px 0;
     box-shadow: 0 0 8px rgba(255, 255, 255, 0.1);
 }
 
 .live-seller-layout .nav-link.active .nav-icon {
     transform: scale(1.05);
-    color: #8b94e7 !important;
+    color: var(--light-text) !important;
 }
 
 /* Navigation Icon */
@@ -195,7 +195,7 @@
     flex-shrink: 0;
     padding: 1.25rem 1.25rem;
     border-top: 1px solid rgba(255, 255, 255, 0.06) !important;
-    background: rgba(20, 22, 32, 0.5) !important;
+    background: #000000 !important;
     margin-top: auto;
 }
 
@@ -266,7 +266,7 @@
 .live-seller-layout .main-content {
     margin-left: 280px; 
     min-height: 100vh;
-    background: #050506 url('../../tiktok_bg2.png') center center / cover no-repeat fixed;
+    background: linear-gradient(180deg, #050506, #0b0b0b);
     transition: margin-left 0.3s ease;
 }
 
@@ -298,7 +298,7 @@
 }
 
 .live-seller-layout .sidebar::-webkit-scrollbar-thumb {
-    background: rgba(102, 126, 234, 0.3);
+    background: rgba(255,255,255,0.05);
     border-radius: 3px;
 }
 

@@ -21,18 +21,16 @@ function get_profile_image_path_header($profile_image) {
 function generate_profile_svg_data_uri_header($initialOrName, $size = 56) {
     $w = (int)$size;
     $h = $w;
-    // User silhouette icon path - centered and scaled
     $iconScale = 0.5;
     $iconSize = $w * $iconScale;
     $iconOffset = ($w - $iconSize) / 2;
-    
     $svg = <<<SVG
 <svg xmlns="http://www.w3.org/2000/svg" width="{$w}" height="{$h}" viewBox="0 0 {$w} {$h}">
     <defs>
         <linearGradient id="g" x1="0" x2="1" y1="0" y2="1">
-            <stop offset="0%" stop-color="#6b5cff"/>
-            <stop offset="50%" stop-color="#8b62f2"/>
-            <stop offset="100%" stop-color="#6b9bff"/>
+            <stop offset="0%" stop-color="#2a2a2a"/>
+            <stop offset="50%" stop-color="#3a3a3a"/>
+            <stop offset="100%" stop-color="#222323"/>
         </linearGradient>
     </defs>
     <rect rx="12" ry="12" width="{$w}" height="{$h}" fill="url(#g)"/>
@@ -65,23 +63,23 @@ if (!empty($current_user['profile_image'])) {
     <link rel="stylesheet" href="<?php echo $base; ?>/assets/css/live-seller.css?v=<?php echo time(); ?>">
     <link rel="icon" href="<?php echo $base; ?>/assets/images/favicon.ico" type="image/x-icon">
     <style>
-        /* Critical CSS to ensure sidebar renders correctly immediately */
+        /* Grayscale critical CSS for live-seller sidebar and topbar */
         .live-seller-layout .sidebar {
-            background: linear-gradient(180deg, #1a1d2e 0%, #16171f 100%) !important;
-            border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
-            box-shadow: 4px 0 20px rgba(0, 0, 0, 0.3) !important;
+            background: #000000 !important;
+            border-right: 1px solid rgba(255,255,255,0.06) !important;
+            box-shadow: 4px 0 20px rgba(0,0,0,0.6) !important;
         }
         .live-seller-layout .sidebar-header {
-            border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
-            background: rgba(20, 22, 32, 0.5);
+            border-bottom: 1px solid rgba(255,255,255,0.05) !important;
+            background: rgba(0,0,0,0.6) !important;
         }
         .live-seller-layout .sidebar .logo-icon {
-            background: linear-gradient(135deg, #667eea, #764ba2) !important;
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.25) !important;
+            background: linear-gradient(135deg,#1b1b1b,#2a2a2a) !important;
+            box-shadow: 0 4px 12px rgba(255,255,255,0.04) !important;
         }
         .live-seller-layout .sidebar-footer {
-            border-top: 1px solid rgba(255, 255, 255, 0.06) !important;
-            background: rgba(20, 22, 32, 0.5) !important;
+            border-top: 1px solid rgba(255,255,255,0.05) !important;
+            background: rgba(0,0,0,0.6) !important;
         }
         /* Force images to display properly in avatars */
         .live-seller-layout .sidebar-footer .user-avatar {
@@ -115,20 +113,15 @@ if (!empty($current_user['profile_image'])) {
             top: 0 !important;
             left: 0 !important;
         }
-        .live-seller-layout .nav-link {
-            color: rgba(255, 255, 255, 0.5) !important;
-        }
+        .live-seller-layout .nav-link { color: rgba(255,255,255,0.6) !important; }
+        .live-seller-layout .nav-link:hover { background: rgba(255,255,255,0.03) !important; color: rgba(255,255,255,0.95) !important; }
         .live-seller-layout .nav-link.active {
-            background: rgba(102, 126, 234, 0.15) !important;
-            color: #8b94e7 !important;
-            box-shadow: 0 0 15px rgba(102, 126, 234, 0.1) !important;
+            background: rgba(255,255,255,0.035) !important;
+            color: var(--light-text) !important;
+            box-shadow: 0 0 8px rgba(255,255,255,0.04) !important;
         }
-        .live-seller-layout .nav-link.active::before {
-            background: linear-gradient(180deg, #667eea, #764ba2) !important;
-        }
-        .live-seller-layout .nav-section-title {
-            color: rgba(139, 148, 195, 0.6) !important;
-        }
+        .live-seller-layout .nav-link.active::before { background: linear-gradient(180deg,#4a4a4a,#6a6a6a) !important; }
+        .live-seller-layout .nav-section-title { color: rgba(255,255,255,0.5) !important; }
         /* Sidebar footer: pin to bottom and align avatar left */
         .live-seller-layout .sidebar { display:flex; flex-direction:column; }
         .live-seller-layout .sidebar .sidebar-nav { flex:1 1 auto; }
@@ -154,7 +147,7 @@ if (!empty($current_user['profile_image'])) {
             display: block !important;
             visibility: visible !important;
             opacity: 1 !important;
-            background: linear-gradient(135deg, #667eea, #764ba2) !important;
+            background: linear-gradient(135deg, var(--gray-700), var(--gray-600)) !important;
         }
         .live-seller-layout .sidebar-footer .user-avatar img { 
             width:100% !important; 
@@ -197,13 +190,20 @@ if (!empty($current_user['profile_image'])) {
         /* Hide the large avatar inside the dropdown to avoid duplication */
         .user-dropdown .dropdown-avatar { display: none !important; }
     </style>
+    <link rel="stylesheet" href="<?php echo $base; ?>/assets/css/gray-theme.css?v=<?php echo time(); ?>">
 </head>
 <body class="admin-layout live-seller-layout">
     <!-- Sidebar -->
     <aside class="sidebar">
         <div class="sidebar-header">
             <div class="logo">
-                <div class="logo-icon">🎤</div>
+                <div class="logo-icon">
+                    <!-- Storefront icon -->
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <path d="M3 7h18l-1.5 13.5a1.5 1.5 0 01-1.5 1.5H6a1.5 1.5 0 01-1.5-1.5L3 7z" stroke="#ffffff" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M7 7V5a5 5 0 0110 0v2" stroke="#ffffff" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
                 <span>Live Seller</span>
             </div>
         </div>
