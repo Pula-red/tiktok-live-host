@@ -128,20 +128,25 @@ if (isset($_GET['ajax_action']) && $_GET['ajax_action'] === 'get_rankings') {
             u.username,
             u.experienced_status,
             u.profile_image,
-            COALESCE(SUM(a.solds_quantity), 0) as total_sales,
-            COALESCE(SUM(a.hours_worked), 0) as total_hours,
+            COALESCE(SUM(a.solds_quantity), 0) + COALESCE(SUM(o.solds_quantity), 0) as total_sales,
+            COALESCE(SUM(a.hours_worked), 0) + COALESCE(SUM(o.duration_hours), 0) as total_hours,
             COUNT(DISTINCT a.attendance_date) as working_days
         FROM users u
         LEFT JOIN attendance a ON u.id = a.seller_id 
             AND a.status = 'approved'
-            AND a.attendance_date BETWEEN :start_date AND :end_date
+            AND a.attendance_date BETWEEN ? AND ?
+        LEFT JOIN overtime o ON u.id = o.seller_id
+            AND o.status = 'approved'
+            AND o.overtime_date BETWEEN ? AND ?
         WHERE u.role = 'live_seller' AND u.status = 'active'
         GROUP BY u.id, u.full_name, u.username, u.experienced_status, u.profile_image
         ORDER BY total_sales DESC, total_hours DESC
     ");
     $stmt->execute([
-        ':start_date' => $ajax_period['start_date'],
-        ':end_date' => $ajax_period['end_date']
+        $ajax_period['start_date'],
+        $ajax_period['end_date'],
+        $ajax_period['start_date'],
+        $ajax_period['end_date']
     ]);
     $user_rankings = $stmt->fetchAll();
     
@@ -158,6 +163,27 @@ if (isset($_GET['ajax_action']) && $_GET['ajax_action'] === 'get_rankings') {
     $total_earned = array_sum(array_column($user_rankings, 'total_earned'));
     $total_sellers = count($user_rankings);
     
+    // Also compute per-account aggregates for the AJAX period (including overtime)
+    $acctSqlAjax = "SELECT acc.id, acc.name, COUNT(DISTINCT am.user_id) as members,
+                       COALESCE(SUM(a.solds_quantity),0) + COALESCE(SUM(o.solds_quantity),0) as total_sales,
+                       COALESCE(SUM(a.hours_worked),0) + COALESCE(SUM(o.duration_hours),0) as total_hours,
+                       COALESCE(SUM(a.hours_worked * (CASE WHEN u.experienced_status = 'tenured' THEN 166 ELSE 125 END)),0) + COALESCE(SUM(o.duration_hours * (CASE WHEN u.experienced_status = 'tenured' THEN 166 ELSE 125 END)),0) as total_salary
+                FROM accounts acc
+                LEFT JOIN account_members am ON am.account_id = acc.id
+                LEFT JOIN users u ON u.id = am.user_id
+                LEFT JOIN attendance a ON a.seller_id = u.id AND a.status = 'approved' AND a.attendance_date BETWEEN ? AND ?
+                LEFT JOIN overtime o ON o.seller_id = u.id AND o.status = 'approved' AND o.overtime_date BETWEEN ? AND ?
+                GROUP BY acc.id, acc.name
+                ORDER BY acc.name ASC";
+    $stmtA = $db->prepare($acctSqlAjax);
+    $stmtA->execute([
+        $ajax_period['start_date'],
+        $ajax_period['end_date'],
+        $ajax_period['start_date'],
+        $ajax_period['end_date']
+    ]);
+    $account_totals_ajax = $stmtA->fetchAll();
+    
     echo json_encode([
         'success' => true,
         'rankings' => $user_rankings,
@@ -166,7 +192,8 @@ if (isset($_GET['ajax_action']) && $_GET['ajax_action'] === 'get_rankings') {
             'total_hours' => $total_hours,
             'total_earned' => $total_earned,
             'total_sellers' => $total_sellers
-        ]
+        ],
+        'account_totals' => $account_totals_ajax
     ]);
     exit;
 }
@@ -178,7 +205,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // is centralized on the Create User page. This page only displays accounts now.
 }
 
-// Fetch all live sellers with their performance data for the current pay period
+// Fetch all live sellers with their performance data for the current pay period (including overtime)
 $stmt = $db->prepare("
     SELECT 
         u.id,
@@ -186,20 +213,25 @@ $stmt = $db->prepare("
         u.username,
         u.experienced_status,
         u.profile_image,
-        COALESCE(SUM(a.solds_quantity), 0) as total_sales,
-        COALESCE(SUM(a.hours_worked), 0) as total_hours,
+        COALESCE(SUM(a.solds_quantity), 0) + COALESCE(SUM(o.solds_quantity), 0) as total_sales,
+        COALESCE(SUM(a.hours_worked), 0) + COALESCE(SUM(o.duration_hours), 0) as total_hours,
         COUNT(DISTINCT a.attendance_date) as working_days
     FROM users u
     LEFT JOIN attendance a ON u.id = a.seller_id 
         AND a.status = 'approved'
-        AND a.attendance_date BETWEEN :start_date AND :end_date
+        AND a.attendance_date BETWEEN ? AND ?
+    LEFT JOIN overtime o ON u.id = o.seller_id
+        AND o.status = 'approved'
+        AND o.overtime_date BETWEEN ? AND ?
     WHERE u.role = 'live_seller' AND u.status = 'active'
     GROUP BY u.id, u.full_name, u.username, u.experienced_status, u.profile_image
     ORDER BY total_sales DESC, total_hours DESC
 ");
 $stmt->execute([
-    ':start_date' => $current_period['start_date'],
-    ':end_date' => $current_period['end_date']
+    $current_period['start_date'],
+    $current_period['end_date'],
+    $current_period['start_date'],
+    $current_period['end_date']
 ]);
 $user_rankings = $stmt->fetchAll();
 
@@ -217,6 +249,33 @@ $total_sales = array_sum(array_column($user_rankings, 'total_sales'));
 $total_hours = array_sum(array_column($user_rankings, 'total_hours'));
 $total_earned = array_sum(array_column($user_rankings, 'total_earned'));
 $total_sellers = count($user_rankings);
+
+// Fetch per-account aggregates for the current period (including overtime)
+$acctSql = "SELECT acc.id, acc.name, COUNT(DISTINCT am.user_id) as members,
+                   COALESCE(SUM(a.solds_quantity),0) + COALESCE(SUM(o.solds_quantity),0) as total_sales,
+                   COALESCE(SUM(a.hours_worked),0) + COALESCE(SUM(o.duration_hours),0) as total_hours,
+                   COALESCE(SUM(a.hours_worked * (CASE WHEN u.experienced_status = 'tenured' THEN 166 ELSE 125 END)),0) + COALESCE(SUM(o.duration_hours * (CASE WHEN u.experienced_status = 'tenured' THEN 166 ELSE 125 END)),0) as total_salary
+            FROM accounts acc
+            LEFT JOIN account_members am ON am.account_id = acc.id
+            LEFT JOIN users u ON u.id = am.user_id
+            LEFT JOIN attendance a ON a.seller_id = u.id AND a.status = 'approved' AND a.attendance_date BETWEEN ? AND ?
+            LEFT JOIN overtime o ON o.seller_id = u.id AND o.status = 'approved' AND o.overtime_date BETWEEN ? AND ?
+            GROUP BY acc.id, acc.name
+            ORDER BY acc.name ASC";
+$stmt = $db->prepare($acctSql);
+$stmt->execute([
+    $current_period['start_date'],
+    $current_period['end_date'],
+    $current_period['start_date'],
+    $current_period['end_date']
+]);
+$accounts_totals = $stmt->fetchAll();
+
+// Compute overall salary across accounts
+$overall_salary_from_accounts = 0.0;
+foreach ($accounts_totals as $at) {
+    $overall_salary_from_accounts += floatval($at['total_salary']);
+}
 
 $page_title = 'Admin Dashboard';
 include 'layout/header.php';
@@ -501,22 +560,72 @@ include 'layout/header.php';
                     <?php endif; ?>
                 </div>
 
-                <!-- Overall Totals -->
-                <div class="totals-section">
-                    <div class="totals-left">
-                        <div class="totals-title">Overall Totals</div>
-                        <div class="totals-subtitle"><?php echo $total_sellers; ?> Active Sellers</div>
+                <!-- Account totals for selected period (summary rows) -->
+                <div class="accounts-totals-section">
+                    <div class="accounts-totals-header">
+                        <div class="accounts-title">Accounts Totals</div>
                     </div>
-                    <div class="totals-spacer"></div>
-                    <div class="totals-sales">
-                        <div class="totals-value"><?php echo number_format($total_sales); ?></div>
-                        <div class="totals-label">TOTAL SALES</div>
+                    <div class="accounts-totals-list" id="accounts-totals-list">
+                        <?php foreach ($accounts_totals as $acct): ?>
+                            <div class="account-total-row" data-account-id="<?php echo $acct['id']; ?>">
+                                <div class="header-col user-col">
+                                    <div class="account-total-name"><?php echo strtoupper(htmlspecialchars($acct['name'])); ?></div>
+                                    <div class="account-total-members"><?php echo strtoupper((int)$acct['members'] . ' members'); ?></div>
+                                </div>
+                                <div class="header-col exp-col">
+                                    <!-- placeholder to align with Experience column -->
+                                </div>
+                                <div class="header-col sales-col">
+                                    <div class="sales-cell">
+                                        <div class="primary-value"><?php echo number_format((int)$acct['total_sales']); ?></div>
+                                        <div class="secondary-value">items sold</div>
+                                    </div>
+                                </div>
+                                <div class="header-col hours-col">
+                                    <div class="hours-cell">
+                                        <div class="primary-value"><?php echo number_format((float)$acct['total_hours'],1); ?>h</div>
+                                        <div class="secondary-value">hours</div>
+                                    </div>
+                                </div>
+                                <div class="header-col rate-col">
+                                    <!-- placeholder to align with Hourly Rate column -->
+                                </div>
+                                <div class="header-col earned-col">
+                                    <div class="earned-cell highlight">
+                                        <div class="primary-value">₱<?php echo number_format((float)$acct['total_salary'],2); ?></div>
+                                        <div class="secondary-value">total salary</div>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
                     </div>
-                    <div class="totals-spacer"></div>
-                    <div class="totals-spacer"></div>
-                    <div class="totals-earned">
-                        <div class="totals-value">₱<?php echo number_format($total_earned, 2); ?></div>
-                        <div class="totals-label">Overall SALARY</div>
+                </div>
+
+                <!-- Accounts Summary removed per request -->
+                <!-- Overall Totals (aligned to account-total-row structure) -->
+                <div class="overall-totals-section" aria-hidden="false">
+                    <div class="overall-totals-row">
+                        <div class="header-col user-col">
+                            <div class="overall-title">Overall Totals</div>
+                            <div class="totals-subtitle"><?php echo $total_sellers; ?> Active Sellers</div>
+                        </div>
+                        <div class="header-col exp-col"><!-- spacer for Experience --></div>
+                        <div class="header-col sales-col">
+                            <div class="sales-cell">
+                                <div class="primary-value totals-value"><?php echo number_format($total_sales); ?></div>
+                                <div class="secondary-value">total sales</div>
+                            </div>
+                        </div>
+                        <div class="header-col hours-col">
+                            <!-- spacer for Hours -->
+                        </div>
+                        <div class="header-col rate-col"><!-- spacer for Rate --></div>
+                        <div class="header-col earned-col">
+                            <div class="earned-cell highlight">
+                                <div class="primary-value totals-value">₱<?php echo number_format($total_earned, 2); ?></div>
+                                <div class="secondary-value">total salary</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -816,6 +925,310 @@ include 'layout/header.php';
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+
+/* Accounts summary grid (dashboard overall) */
+.accounts-summary-section {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+.accounts-summary-grid {
+    display: block;
+    flex: 1 1 auto;
+}
+.accounts-list { display:flex; flex-direction:column; gap:0.5rem; }
+.account-row { display:flex; align-items:center; gap:1rem; background: #2f3340; color: #e6eef3; padding: 0.9rem 1rem; border-radius: 8px; box-shadow: 0 6px 14px rgba(0,0,0,0.35); }
+.account-info-left { flex: 1 1 360px; min-width: 220px; }
+.account-name { font-weight:700; font-size:1rem; color: #ffffff; }
+.account-members.small { font-size:0.85rem; color:rgba(255,255,255,0.75); margin-top:0.25rem; }
+.account-metric { width: 140px; text-align:center; }
+.account-metric .metric-value { font-weight:800; font-size:1.05rem; }
+.account-metric .metric-label { font-size:0.75rem; color: rgba(255,255,255,0.7); margin-top:0.25rem; }
+.sales-metric .metric-value { color: #10b981; }
+.hours-metric .metric-value { color: #3b82f6; }
+.salary-metric .metric-value { color: #16a34a; }
+.account-row-actions { margin-left:auto; }
+.overall-salary-box { min-width:220px; background:#3b3f4a; color:white; padding:1rem; border-radius:10px; text-align:center; box-shadow: 0 6px 18px rgba(0,0,0,0.35); }
+.overall-label { font-size:0.9rem; color:rgba(255,255,255,0.8); font-weight:700; }
+.overall-value { font-size:1.4rem; font-weight:900; margin-top:0.5rem; }
+
+/* Make the table headers use the same grid columns so totals align */
+.table-headers {
+    display: grid;
+    grid-template-columns: 1fr 120px 140px 140px 120px 160px;
+    align-items: center;
+    gap: 1rem;
+}
+
+@media (max-width: 1024px) {
+    .table-headers {
+        grid-template-columns: 1fr 100px 120px 120px 100px 140px;
+    }
+}
+
+@media (max-width: 1024px) {
+    .overall-totals-row {
+        grid-template-columns: 2.2fr 1fr 1fr 1.1fr 1fr 1.2fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .overall-totals-row { display: block; padding: 0.85rem 1rem; }
+    .overall-totals-row .overall-title, .overall-totals-row .totals-subtitle { text-align: left; }
+    .overall-totals-row .sales-col, .overall-totals-row .earned-col { margin-top:0.6rem; }
+    .overall-totals-row .sales-col .primary-value, .overall-totals-row .earned-col .primary-value { font-size:1.15rem; text-align:left; }
+    .overall-totals-row .sales-col .secondary-value, .overall-totals-row .earned-col .secondary-value { text-align:left; }
+}
+
+@media (max-width: 768px) {
+    .table-headers {
+        display: none; /* hide wide headers on narrow screens to avoid layout clutter */
+    }
+}
+
+/* Account totals section under rankings */
+.accounts-totals-section { margin-top: 1rem; background: transparent; }
+.accounts-totals-header .accounts-title { font-weight:800; color:#e6eef3; margin-bottom:0.5rem; }
+.accounts-totals-list { display:flex; flex-direction:column; gap:0.5rem; }
+.account-total-row { display:grid; grid-template-columns: 2.2fr 1fr 1fr 1.1fr 1fr 1.2fr; gap:1rem; padding: 1.25rem 1.5rem 1.25rem 2.5rem; align-items:center; background: #2b2f36; border-radius:8px; }
+.account-total-row .header-col { display:flex; flex-direction:column; justify-content:center; }
+.account-total-row .user-col { grid-column: 1 / 2; min-width:180px; }
+.account-total-row .exp-col { grid-column: 2 / 3; }
+.account-total-row .sales-col { grid-column: 3 / 4; }
+.account-total-row .hours-col { grid-column: 4 / 5; }
+.account-total-row .rate-col { grid-column: 5 / 6; }
+.account-total-row .earned-col { grid-column: 6 / 7; }
+.account-total-name { font-weight:700; color:#fff; }
+.account-total-members { font-size:0.85rem; color:rgba(255,255,255,0.7); margin-top:0.25rem; }
+.acct-metric { font-weight:800; }
+.acct-metric.acct-hours { color:#3b82f6; }
+.acct-metric.acct-sales { color:#10b981; }
+.acct-metric.acct-salary { color:#16a34a; }
+
+/* Overall Totals row: align to the same grid used by account-total-row */
+.overall-totals-section { margin-top: 1rem; }
+.overall-totals-row {
+    display: grid;
+    grid-template-columns: 2.2fr 1fr 1fr 1.1fr 1fr 1.2fr;
+    align-items: center;
+    gap: 1rem;
+    /* match padding and layout of account-total-row for visual alignment */
+    padding: 1.25rem 1.5rem 1.25rem 2.5rem;
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+    border-radius: 8px;
+}
+.overall-totals-row .header-col { display:flex; flex-direction:column; justify-content:center; }
+.overall-totals-row .user-col { grid-column: 1 / 2; }
+.overall-totals-row .exp-col { grid-column: 2 / 3; }
+.overall-totals-row .sales-col { grid-column: 3 / 4; }
+.overall-totals-row .hours-col { grid-column: 4 / 5; }
+.overall-totals-row .rate-col { grid-column: 5 / 6; }
+.overall-totals-row .earned-col { grid-column: 6 / 7; }
+.overall-totals-row .overall-title { font-weight:800; color:#ffd24d; font-size:0.95rem; }
+.overall-totals-row .totals-subtitle { color: rgba(255,255,255,0.75); font-size:0.9rem; margin-top:0.25rem; }
+.overall-totals-row .sales-cell,
+.overall-totals-row .earned-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+.overall-totals-row .sales-cell .primary-value,
+.overall-totals-row .earned-cell .primary-value {
+    font-size: 1.05rem; /* match account totals primary size for consistency */
+    font-weight: 800;
+    margin-left: -15px; /* shift left to align with account totals */
+}
+.overall-totals-row .sales-cell .secondary-value,
+.overall-totals-row .earned-cell .secondary-value {
+    font-size:0.75rem;
+    color: rgba(255,255,255,0.75);
+    letter-spacing:0.6px;
+    text-transform:uppercase;
+    margin-top:0.25rem;
+}
+
+/* Micro-adjust: shift primary metric values slightly left for pixel alignment */
+.account-total-row .sales-cell .primary-value,
+.account-total-row .hours-cell .primary-value,
+.account-total-row .earned-cell .primary-value {
+    margin-left: -20px; /* moved 1px further left for finer alignment */
+}
+
+/* Align account names with user names (user names are offset by the rank-badge width) */
+.account-total-row .account-total-name,
+.account-total-row .account-total-members {
+    margin-left: 72px; /* moved 3px right for finer alignment with user names */
+}
+
+/* Align Accounts Totals title with Rank & User column */
+.accounts-totals-header .accounts-title {
+    margin-left: 40px;
+}
+
+@media (max-width: 1024px) {
+    /* Tablet / iPad: stack into a single-column card so metrics appear vertically
+       below the account name (matches the compact layout in Image 1) */
+    .account-total-row { grid-template-columns: 1fr; padding: 1rem; align-items: flex-start; }
+    .account-total-row .exp-col, .account-total-row .rate-col { display: none; }
+
+    /* Ensure the user column (name/members) appears first */
+    .account-total-row .user-col { grid-column: 1 / -1; margin-bottom: 0.5rem; }
+
+    /* Make metric blocks full-width and stacked with clear visual hierarchy */
+    .account-total-row .sales-col,
+    .account-total-row .hours-col,
+    .account-total-row .earned-col {
+        grid-column: 1 / -1;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 0.75rem;
+        padding: 0.25rem 0;
+    }
+
+    /* Primary values: larger and colored so they stand out as in Image 1 */
+    .account-total-row .sales-cell .primary-value { color: #10b981; font-size: 1.15rem; font-weight: 900; margin-left: 0; }
+    .account-total-row .hours-cell .primary-value { color: #1e90ff; font-size: 1.05rem; font-weight: 800; margin-left: 0; }
+    .account-total-row .earned-cell .primary-value { color: #10b981; font-size: 1.05rem; font-weight: 800; margin-left: 0; }
+
+    .account-total-row .secondary-value { font-size: 0.75rem; color: rgba(255,255,255,0.72); text-transform: uppercase; letter-spacing: 0.6px; }
+
+    .account-total-row { gap: 0.5rem; }
+    /* On tablet, remove the desktop name offset so text sits flush in stacked layout */
+    .account-total-row .account-total-name,
+    .account-total-row .account-total-members { margin-left: 0; }
+    .accounts-totals-header .accounts-title { margin-left: 0; }
+}
+
+@media (max-width: 1024px) {
+    .overall-totals-row {
+        grid-template-columns: 1fr;
+        padding: 1rem;
+        align-items: flex-start;
+    }
+    .overall-totals-row .exp-col,
+    .overall-totals-row .hours-col,
+    .overall-totals-row .rate-col {
+        display: none;
+    }
+    .overall-totals-row .user-col {
+        grid-column: 1 / -1;
+        margin-bottom: 0.5rem;
+    }
+    .overall-totals-row .sales-col,
+    .overall-totals-row .earned-col {
+        grid-column: 1 / -1;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
+        padding: 0.25rem 0;
+        margin-top: 0.5rem;
+    }
+    .overall-totals-row .sales-cell,
+    .overall-totals-row .earned-cell {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .overall-totals-row .sales-cell .primary-value,
+    .overall-totals-row .earned-cell .primary-value {
+        margin-left: 0;
+        font-size: 1.8rem;
+        font-weight: 900;
+    }
+    .overall-totals-row .sales-cell .secondary-value,
+    .overall-totals-row .earned-cell .secondary-value {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        color: rgba(255,255,255,0.7);
+    }
+}
+
+@media (max-width: 768px) {
+    .account-total-row { grid-template-columns: 1fr; padding: 1rem; gap: 0.75rem; }
+    .account-total-row .header-col { width:100%; }
+    .account-total-row .sales-col, .account-total-row .hours-col, .account-total-row .earned-col { width:100%; display:flex; justify-content:flex-start; gap:1rem; }
+    .acct-metric { text-align:left; }
+    .account-total-row .sales-cell .primary-value,
+    .account-total-row .hours-cell .primary-value,
+    .account-total-row .earned-cell .primary-value { margin-left: 0; }
+    /* Ensure account name alignment is reset on mobile stacked layout */
+    .account-total-row .account-total-name,
+    .account-total-row .account-total-members { margin-left: 0; }
+    .accounts-totals-header .accounts-title { margin-left: 0; }
+
+    /* Overall Totals responsive layout */
+    .overall-totals-row {
+        grid-template-columns: 1fr;
+        padding: 1rem;
+    }
+    .overall-totals-row .exp-col,
+    .overall-totals-row .hours-col,
+    .overall-totals-row .rate-col {
+        display: none;
+    }
+    .overall-totals-row .user-col {
+        grid-column: 1 / -1;
+        margin-bottom: 0.5rem;
+    }
+    .overall-totals-row .sales-col,
+    .overall-totals-row .earned-col {
+        grid-column: 1 / -1;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        width: 100%;
+        margin-top: 0.6rem;
+    }
+    .overall-totals-row .sales-cell,
+    .overall-totals-row .earned-cell {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .overall-totals-row .sales-cell .primary-value,
+    .overall-totals-row .earned-cell .primary-value {
+        margin-left: 0;
+        font-size: 1.8rem;
+        font-weight: 900;
+        text-align: left;
+    }
+    .overall-totals-row .sales-cell .secondary-value,
+    .overall-totals-row .earned-cell .secondary-value {
+        text-align: left;
+        font-size: 0.75rem;
+    }
+}
+</style>
+
+<style>
+/* Center metric values and labels on desktop so labels sit directly under numbers */
+@media (min-width: 769px) {
+    .performance-table .sales-cell,
+    .performance-table .hours-cell,
+    .performance-table .rate-cell,
+    .performance-table .earned-cell,
+    .account-total-row .sales-cell,
+    .account-total-row .hours-cell,
+    .account-total-row .earned-cell {
+        display: flex;
+        flex-direction: column;
+        align-items: center;    /* centers the secondary label under the primary value */
+        justify-content: center;
+        padding-left: 0;        /* remove left offset so centering is exact */
+    }
+
+    /* Center the column headers for visual alignment */
+    .table-headers .sales-col,
+    .table-headers .hours-col,
+    .table-headers .rate-col,
+    .table-headers .earned-col {
+        text-align: center;
+    }
 }
 </style>
 
@@ -1177,19 +1590,46 @@ function refreshPerformanceRankings() {
             
             // Update totals section
             if (data.totals) {
-                var totalsSubtitle = document.querySelector('.totals-subtitle');
+                var totalsSubtitle = document.querySelector('.overall-totals-row .totals-subtitle');
                 if (totalsSubtitle) {
                     totalsSubtitle.textContent = data.totals.total_sellers + ' Active Sellers';
                 }
                 
-                var totalsSalesValue = document.querySelector('.totals-sales .totals-value');
+                var totalsSalesValue = document.querySelector('.overall-totals-row .sales-cell .totals-value');
                 if (totalsSalesValue) {
                     totalsSalesValue.textContent = formatNumber(data.totals.total_sales);
                 }
                 
-                var totalsEarnedValue = document.querySelector('.totals-earned .totals-value');
+                var totalsEarnedValue = document.querySelector('.overall-totals-row .earned-cell .totals-value');
                 if (totalsEarnedValue) {
                     totalsEarnedValue.textContent = '₱' + formatNumber(data.totals.total_earned, 2);
+                }
+            }
+
+            // Update account totals list if provided
+            if (data.account_totals) {
+                var acctList = document.getElementById('accounts-totals-list');
+                if (acctList) {
+                    // Rebuild inner HTML using the same column structure as the rankings table
+                    var html = '';
+                    data.account_totals.forEach(function(a) {
+                        html += '<div class="account-total-row" data-account-id="' + a.id + '">';
+                        html += '<div class="header-col user-col"><div class="account-total-name">' + escapeHtml((a.name || '').toUpperCase()) + '</div>';
+                        html += '<div class="account-total-members">' + (a.members || 0) + ' members</div></div>';
+                        html += '<div class="header-col exp-col"></div>'; // placeholder for Experience column
+                        html += '<div class="header-col sales-col">';
+                        html += '<div class="sales-cell"><div class="primary-value">' + formatNumber(a.total_sales || 0) + '</div>';
+                        html += '<div class="secondary-value">items sold</div></div></div>';
+                        html += '<div class="header-col hours-col">';
+                        html += '<div class="hours-cell"><div class="primary-value">' + formatNumber(a.total_hours || 0, 1) + 'h</div>';
+                        html += '<div class="secondary-value">hours</div></div></div>';
+                        html += '<div class="header-col rate-col"></div>'; // placeholder for Rate column
+                        html += '<div class="header-col earned-col">';
+                        html += '<div class="earned-cell highlight"><div class="primary-value">₱' + formatNumber(a.total_salary || 0, 2) + '</div>';
+                        html += '<div class="secondary-value">total salary</div></div></div>';
+                        html += '</div>';
+                    });
+                    acctList.innerHTML = html;
                 }
             }
         })

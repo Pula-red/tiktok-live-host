@@ -112,6 +112,15 @@ if ($attendance_submitted) {
     unset($_SESSION['attendance_submitted']);
 }
 
+// Check if user has overtime for today
+$stmt = $db->prepare("
+    SELECT id, status FROM overtime 
+    WHERE seller_id = ? AND overtime_date = ?
+    ORDER BY created_at DESC LIMIT 1
+");
+$stmt->execute([$current_user['id'], $today]);
+$today_overtime = $stmt->fetch();
+
 // Get attendance data for the viewed date
 $stmt = $db->prepare("
     SELECT a.*, ats.name as slot_name, ats.duration_hours, ats.start_time, ats.end_time
@@ -131,7 +140,126 @@ $available_slots = $stmt->fetchAll();
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     
-    if ($action === 'schedule_slot') {
+    // Handle AJAX request for attendance end time and overtime slots
+        if ($action === 'get_attendance_endtime') {
+            header('Content-Type: application/json');
+            
+            // Get latest attendance with time slot info
+            $stmt = $db->prepare("
+                SELECT a.id, a.status, ats.start_time, ats.end_time, ats.name, ats.duration_hours
+                FROM attendance a
+                LEFT JOIN attendance_time_slots ats ON a.time_slot = ats.id
+                WHERE a.seller_id = ? AND a.attendance_date = ?
+                AND a.status IN ('approved', 'pending_approval')
+                ORDER BY a.created_at DESC LIMIT 1
+            ");
+            $stmt->execute([$current_user['id'], $today]);
+            $attendance = $stmt->fetch();
+            
+            if ($attendance) {
+                $endTime = $attendance['end_time'];
+                $slotName = $attendance['name'];
+                
+                // Format time display - show hours with AM/PM like "6-10 AM"
+                $startTime = new DateTime('2000-01-01 ' . $attendance['start_time']);
+                $endTimeObj = new DateTime('2000-01-01 ' . $endTime);
+                $startHour = $startTime->format('g');
+                $endHour = $endTimeObj->format('g');
+                $endAMPM = $endTimeObj->format('A');
+                $slotDisplay = $startHour . '-' . $endHour . ' ' . $endAMPM;
+                
+                echo json_encode([
+                    'success' => true,
+                    'attendance_id' => $attendance['id'],
+                    'end_time' => $endTime,
+                    'slot_display' => $slotDisplay,
+                    'duration_hours' => $attendance['duration_hours']
+                ]);
+            } else {
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'No approved attendance found'
+                ]);
+            }
+            exit;
+        }
+        
+        // Handle AJAX request for overtime slots based on duration and attendance
+        if ($action === 'get_overtime_slots') {
+            header('Content-Type: application/json');
+            $duration = isset($_POST['duration']) ? (int)$_POST['duration'] : 0;
+            
+            // Get latest attendance with time slot info
+            $stmt = $db->prepare("
+                SELECT a.id, a.status, ats.start_time, ats.end_time, ats.name, ats.duration_hours
+                FROM attendance a
+                LEFT JOIN attendance_time_slots ats ON a.time_slot = ats.id
+                WHERE a.seller_id = ? AND a.attendance_date = ?
+                AND a.status IN ('approved', 'pending_approval')
+                ORDER BY a.created_at DESC LIMIT 1
+            ");
+            $stmt->execute([$current_user['id'], $today]);
+            $attendance = $stmt->fetch();
+            
+            if (!$attendance) {
+                echo json_encode(['success' => false, 'message' => 'No approved attendance found']);
+                exit;
+            }
+            
+            // Define specific overtime slots based on attendance duration
+            $overtime_slots_3hr = [
+                ['start' => '08:00:00', 'end' => '10:00:00', 'display' => '8 AM - 10 AM'],
+                ['start' => '11:00:00', 'end' => '13:00:00', 'display' => '11 AM - 1 PM'],
+                ['start' => '14:00:00', 'end' => '16:00:00', 'display' => '2 PM - 4 PM'],
+                ['start' => '17:00:00', 'end' => '19:00:00', 'display' => '5 PM - 7 PM'],
+                ['start' => '20:00:00', 'end' => '22:00:00', 'display' => '8 PM - 10 PM'],
+                ['start' => '23:00:00', 'end' => '01:00:00', 'display' => '11 PM - 1 AM'],
+                ['start' => '02:00:00', 'end' => '04:00:00', 'display' => '2 AM - 4 AM'],
+                ['start' => '05:00:00', 'end' => '07:00:00', 'display' => '5 AM - 7 AM'],
+            ];
+            
+            $overtime_slots_4hr = [
+                ['start' => '10:00:00', 'end' => '12:00:00', 'display' => '10 AM - 12 PM'],
+                ['start' => '14:00:00', 'end' => '16:00:00', 'display' => '2 PM - 4 PM'],
+                ['start' => '18:00:00', 'end' => '20:00:00', 'display' => '6 PM - 8 PM'],
+                ['start' => '22:00:00', 'end' => '00:00:00', 'display' => '10 PM - 12 AM'],
+                ['start' => '02:00:00', 'end' => '04:00:00', 'display' => '2 AM - 4 AM'],
+                ['start' => '06:00:00', 'end' => '08:00:00', 'display' => '6 AM - 8 AM'],
+            ];
+            
+            // Select the appropriate slots based on duration
+            $selected_slots = ($duration == 4) ? $overtime_slots_4hr : $overtime_slots_3hr;
+            
+            // Get attendance end time for filtering
+            $attendance_end_time = $attendance['end_time'];
+            $end_time_seconds = strtotime("2000-01-01 " . $attendance_end_time);
+            
+            // Format slots for response, filtering to only show slots after attendance end time
+            $overtime_slots = [];
+            foreach ($selected_slots as $slot) {
+                $slot_start = $slot['start'];
+                $slot_start_seconds = strtotime("2000-01-01 " . $slot_start);
+                
+                // Compare times: if slot start >= attendance end time, include it
+                // Also include early morning slots (2AM, 5AM, 6AM) as they're always after daytime shifts
+                if ($slot_start_seconds >= $end_time_seconds || $slot_start_seconds < strtotime("2000-01-01 10:00:00")) {
+                    $overtime_slots[] = [
+                        'value' => 'overtime_' . $slot['start'] . '_' . $slot['end'],
+                        'text' => $slot['display'],
+                        'start_time' => $slot['start'],
+                        'end_time' => $slot['end']
+                    ];
+                }
+            }
+            
+            echo json_encode([
+                'success' => true,
+                'slots' => $overtime_slots,
+                'attendance_end' => date('g:i A', strtotime($attendance['end_time'])),
+                'attendance_name' => $attendance['name']
+            ]);
+            exit;
+        }    if ($action === 'schedule_slot') {
         $slot_id = $_POST['slot_id'] ?? '';
         $attendance_date = $_POST['attendance_date'] ?? $today;
         $custom_slot_data = $_POST['custom_slot_data'] ?? '';
@@ -281,6 +409,97 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$attendance_id, $current_user['id']]);
             $success_message = "Time slot cancelled successfully!";
         }
+    } elseif ($action === 'add_overtime') {
+        $overtime_slot = $_POST['overtime_slot'] ?? '';
+        $overtime_solds = isset($_POST['overtime_solds']) ? (int)$_POST['overtime_solds'] : 0;
+        $attendance_id = isset($_POST['attendance_id']) ? (int)$_POST['attendance_id'] : 0;
+        $duration = isset($_POST['duration']) ? (int)$_POST['duration'] : 0;
+        
+        if (!$attendance_id) {
+            $error_message = "No attendance record found. Please submit attendance first.";
+        } elseif (!$duration || ($duration !== 3 && $duration !== 4)) {
+            $error_message = "Invalid duration selected.";
+        } elseif (!$overtime_slot) {
+            $error_message = "Please select an overtime time slot.";
+        } else {
+            // Get the attendance date from the attendance record
+            $attendance_stmt = $db->prepare("
+                SELECT attendance_date FROM attendance WHERE id = ? AND seller_id = ?
+            ");
+            $attendance_stmt->execute([$attendance_id, $current_user['id']]);
+            $attendance_record = $attendance_stmt->fetch();
+            
+            if (!$attendance_record) {
+                $error_message = "Invalid attendance record. Please submit attendance first.";
+            } else {
+                // Use the attendance date for overtime record (since it's a continuation of that work day)
+                $overtime_date = $attendance_record['attendance_date'];
+                
+                // Check if user already has overtime for this attendance date
+                $check_stmt = $db->prepare("
+                    SELECT COUNT(*) as count FROM overtime 
+                    WHERE seller_id = ? AND overtime_date = ? AND status != 'rejected'
+                ");
+                $check_stmt->execute([$current_user['id'], $overtime_date]);
+                $overtime_count = $check_stmt->fetch()['count'];
+                
+                if ($overtime_count > 0) {
+                    $error_message = "You have already submitted overtime for this date. Only 1 overtime per day is allowed.";
+                } else {
+                    // Validate file upload
+                    if (!isset($_FILES['overtime_photo']) || $_FILES['overtime_photo']['error'] !== UPLOAD_ERR_OK) {
+                        $error_message = "Please upload your overtime proof photo before submitting.";
+                    } else {
+                        // Parse overtime slot to get start and end times
+                        // Format: overtime_HH:MM:SS_HH:MM:SS
+                        if (preg_match('/^overtime_(\d{2}):(\d{2}):(\d{2})_(\d{2}):(\d{2}):(\d{2})$/', $overtime_slot, $matches)) {
+                            $overtime_start_time = $matches[1] . ':' . $matches[2] . ':' . $matches[3];
+                            $overtime_end_time = $matches[4] . ':' . $matches[5] . ':' . $matches[6];
+                            
+                            $upload_dir = __DIR__ . '/../uploads/overtime/';
+                            if (!file_exists($upload_dir)) mkdir($upload_dir, 0755, true);
+                            
+                            $ext = pathinfo($_FILES['overtime_photo']['name'], PATHINFO_EXTENSION);
+                            $filename = 'overtime_' . $current_user['id'] . '_' . time() . '.' . $ext;
+                            $dest = $upload_dir . $filename;
+                            
+                            if (move_uploaded_file($_FILES['overtime_photo']['tmp_name'], $dest)) {
+                                $photo_path = 'uploads/overtime/' . $filename;
+                                
+                                // Insert into overtime table
+                                $stmt = $db->prepare("
+                                    INSERT INTO overtime (seller_id, attendance_id, overtime_date, duration_hours, start_time, end_time, solds_quantity, overtime_photo, status)
+                                    VALUES (?, ?, ?, 2, ?, ?, ?, ?, 'pending_approval')
+                                ");
+                                
+                                try {
+                                    $stmt->execute([
+                                        $current_user['id'],
+                                        $attendance_id,
+                                        $overtime_date,
+                                        $overtime_start_time,
+                                        $overtime_end_time,
+                                        $overtime_solds,
+                                        $photo_path
+                                    ]);
+                                    
+                                    $success_message = "Overtime submitted successfully! It's pending admin approval.";
+                                    // Redirect to prevent form resubmission
+                                    header('Location: ' . $_SERVER['REQUEST_URI']);
+                                    exit;
+                                } catch (Exception $e) {
+                                    $error_message = "Error submitting overtime: " . $e->getMessage();
+                                }
+                            } else {
+                                $error_message = "Failed to save uploaded photo. Please try again.";
+                            }
+                        } else {
+                            $error_message = "Invalid overtime slot format.";
+                        }
+                    }
+                }
+            }
+        }
     }
     
     // Refresh attendance data after action
@@ -408,6 +627,39 @@ include 'layout/header.php';
                                 </div>
                             </div>
                         </div>
+                        <?php if ($today_overtime): ?>
+                            <?php 
+                            $status_color = '';
+                            $status_border = '';
+                            $message = '';
+                            
+                            if ($today_overtime['status'] === 'pending_approval') {
+                                $status_color = '#d97706'; // amber
+                                $status_border = '#fcd34d';
+                                $message = 'Your overtime is <span style="color: #f59e0b; font-weight: 700;">pending admin approval</span>';
+                            } elseif ($today_overtime['status'] === 'approved') {
+                                $status_color = '#059669'; // green
+                                $status_border = '#86efac';
+                                $message = 'Your overtime has been <span style="color: #10b981; font-weight: 700;">approved</span>';
+                            } elseif ($today_overtime['status'] === 'rejected') {
+                                $status_color = '#dc2626'; // red
+                                $status_border = '#fca5a5';
+                                $message = 'Your overtime was <span style="color: #ef4444; font-weight: 700;">rejected</span>';
+                            }
+                            ?>
+                            <div style="margin: 1.5rem 0; padding: 1rem; background: white; border: 2px solid <?php echo $status_border; ?>; border-radius: 12px;">
+                                <div style="display: flex; align-items: flex-start; gap: 1rem;">
+                                    <span style="font-size: 1.8rem; flex-shrink: 0;">ℹ️</span>
+                                    <div>
+                                        <p style="margin: 0; color: <?php echo $status_color; ?>; font-weight: 700; font-size: 1.1rem;">Overtime Status</p>
+                                        <p style="margin: 0.5rem 0 0 0; color: <?php echo $status_color; ?>; font-weight: 600;">
+                                            <?php echo $message; ?>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+                        
                         <div class="next-submission-info">
                             <div class="info-content-compact">
                                 <span class="info-icon">🕐</span>
@@ -433,13 +685,21 @@ include 'layout/header.php';
                     </div>
                     
                     <div class="form-footer">
-                        <div class="single-action">
-                            <a href="dashboard.php" class="btn btn-primary btn-dashboard">
-                                <span class="btn-icon">🏠</span>
-                                <span class="btn-text">Return to Dashboard</span>
-                                <span class="btn-arrow">→</span>
-                            </a>
-
+                        <div class="footer-actions" style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                            <?php if (($today_status === 'pending_approval' || $today_status === 'approved') && !$today_overtime): ?>
+                                <!-- Show Add Overtime when attendance is pending or approved and no overtime submitted -->
+                                <button type="button" class="btn btn-secondary btn-overtime" onclick="openOvertimeModal()" style="flex: 1;">
+                                    <span class="btn-icon">⏱️</span>
+                                    <span class="btn-text">Add Overtime</span>
+                                </button>
+                            <?php else: ?>
+                                <!-- Show Return to Dashboard for rejected or other statuses, or if overtime already submitted -->
+                                <a href="dashboard.php" class="btn btn-primary btn-dashboard" style="flex: 1;">
+                                    <span class="btn-icon">🏠</span>
+                                    <span class="btn-text">Return to Dashboard</span>
+                                    <span class="btn-arrow">→</span>
+                                </a>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -496,7 +756,7 @@ include 'layout/header.php';
                         <div class="upload-placeholder" onclick="document.getElementById('sold_photo').click()">
                             <span class="upload-icon">📷</span>
                             <p>Upload your total sold photo</p>
-                            <span class="btn btn-outline">Choose Photo</span>
+                            <p style="font-size: 0.85rem; color: rgba(255, 255, 255, 0.6); margin: 0;">✓ Click to upload</p>
                         </div>
                         <div id="photo-error" class="field-error" style="color:#ff6b6b; margin-top:8px; display: <?php echo isset($photo_error) ? 'block' : 'none'; ?>; ">
                             <?php echo htmlspecialchars($photo_error ?? ''); ?>
@@ -521,110 +781,298 @@ include 'layout/header.php';
     </div>
 
 <script>
-// Define time slot data
-const timeSlots = {
-    3: [
-        { value: "3_5am_8am", text: "5:00 AM - 8:00 AM", start_time: "05:00:00", end_time: "08:00:00" },
-        { value: "3_8am_11am", text: "8:00 AM - 11:00 AM", start_time: "08:00:00", end_time: "11:00:00" },
-        { value: "3_11am_2pm", text: "11:00 AM - 2:00 PM", start_time: "11:00:00", end_time: "14:00:00" },
-        { value: "3_2pm_5pm", text: "2:00 PM - 5:00 PM", start_time: "14:00:00", end_time: "17:00:00" },
-        { value: "3_5pm_8pm", text: "5:00 PM - 8:00 PM", start_time: "17:00:00", end_time: "20:00:00" },
-        { value: "3_8pm_11pm", text: "8:00 PM - 11:00 PM", start_time: "20:00:00", end_time: "23:00:00" },
-        { value: "3_11pm_2am", text: "11:00 PM - 2:00 AM", start_time: "23:00:00", end_time: "02:00:00" },
-        { value: "3_2am_5am", text: "2:00 AM - 5:00 AM", start_time: "02:00:00", end_time: "05:00:00" }
-    ],
-    4: [
-        { value: "4_6am_10am", text: "6:00 AM - 10:00 AM", start_time: "06:00:00", end_time: "10:00:00" },
-        { value: "4_10am_2pm", text: "10:00 AM - 2:00 PM", start_time: "10:00:00", end_time: "14:00:00" },
-        { value: "4_2pm_6pm", text: "2:00 PM - 6:00 PM", start_time: "14:00:00", end_time: "18:00:00" },
-        { value: "4_6pm_10pm", text: "6:00 PM - 10:00 PM", start_time: "18:00:00", end_time: "22:00:00" },
-        { value: "4_10pm_2am", text: "10:00 PM - 2:00 AM", start_time: "22:00:00", end_time: "02:00:00" },
-        { value: "4_2am_6am", text: "2:00 AM - 6:00 AM", start_time: "02:00:00", end_time: "06:00:00" }
-    ]
-};
+// Overtime time slots data (no longer needed - will be generated dynamically)
+
+function openOvertimeModal() {
+    const modal = document.getElementById('overtimeModal');
+    
+    // Show modal first with loading state
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    
+    // Fetch latest attendance details
+    fetch('<?php echo $_SERVER["REQUEST_URI"]; ?>', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'action=get_attendance_endtime'
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('Attendance data received:', data);
+        if (data.success) {
+            document.getElementById('attendance_id').value = data.attendance_id;
+            const slotElement = document.getElementById('yourAttendanceSlot');
+            if (slotElement) {
+                slotElement.textContent = data.slot_display;
+            }
+            // Display duration in the info section
+            const durationDisplay = document.getElementById('shiftDurationDisplay');
+            if (durationDisplay) {
+                durationDisplay.textContent = data.duration_hours + ' Hours';
+            }
+            // Store duration in hidden fields for form submission
+            const durationField = document.getElementById('duration');
+            if (durationField) {
+                durationField.value = data.duration_hours;
+            }
+            document.getElementById('duration_value').value = data.duration_hours;
+            // Trigger the updateOvertimeSlots to load the correct slots immediately
+            updateOvertimeSlots();
+        } else {
+            console.error('Error from server:', data.message);
+            document.getElementById('yourAttendanceSlot').textContent = 'Error: ' + (data.message || 'Unable to load');
+            alert(data.message || 'Unable to load attendance details');
+        }
+    })
+    .catch(err => {
+        console.error('Fetch error:', err);
+        document.getElementById('yourAttendanceSlot').textContent = 'Error loading data';
+        alert('Error loading attendance details: ' + err.message);
+    });
+}
 
 function updateTimeSlots() {
-    const durationChoice = document.getElementById('duration_choice').value;
+    const duration = document.getElementById('duration_choice').value;
     const slotSelect = document.getElementById('slot_id');
-    const customSlotData = document.getElementById('custom_slot_data');
     
-    updateSlotDropdown(durationChoice, slotSelect, customSlotData);
-}
-
-function updateSlotDropdown(durationChoice, slotSelect, customSlotData) {
-    // Clear existing options
-    slotSelect.innerHTML = '<option value="">Select a time slot...</option>';
-    
-    if (durationChoice && timeSlots[durationChoice]) {
-        slotSelect.disabled = false;
-        
-        timeSlots[durationChoice].forEach(slot => {
-            const option = document.createElement('option');
-            option.value = slot.value;
-            option.textContent = slot.text;
-            slotSelect.appendChild(option);
-        });
-    } else {
-        slotSelect.disabled = true;
+    if (!duration) {
         slotSelect.innerHTML = '<option value="">First select duration...</option>';
+        slotSelect.disabled = true;
+        return;
     }
     
-    // Update custom slot data when selection changes
-    slotSelect.onchange = function() {
-        const selectedSlot = timeSlots[durationChoice]?.find(slot => slot.value === this.value);
-        if (selectedSlot) {
-            customSlotData.value = JSON.stringify({
-                duration: durationChoice,
-                start_time: selectedSlot.start_time,
-                end_time: selectedSlot.end_time,
-                name: selectedSlot.text
-            });
-        } else {
-            customSlotData.value = '';
-        }
-    };
+    // Get time slots for selected duration from the page data
+    const allSlots = <?php echo json_encode($available_slots); ?>;
+    const filteredSlots = allSlots.filter(slot => parseInt(slot.duration_hours) === parseInt(duration));
+    
+    if (filteredSlots.length === 0) {
+        slotSelect.innerHTML = '<option value="">No time slots available</option>';
+        slotSelect.disabled = true;
+        return;
+    }
+    
+    slotSelect.innerHTML = '<option value="">Select a time slot...</option>';
+    slotSelect.disabled = false;
+    
+    filteredSlots.forEach(slot => {
+        const option = document.createElement('option');
+        option.value = slot.id;
+        const startTime = new Date('2000-01-01 ' + slot.start_time).toLocaleTimeString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+        });
+        const endTime = new Date('2000-01-01 ' + slot.end_time).toLocaleTimeString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+        });
+        option.textContent = slot.name + ' (' + startTime + ' - ' + endTime + ')';
+        slotSelect.appendChild(option);
+    });
 }
 
-// Auto-refresh attendance status every 30 seconds
-setInterval(function() {
-    // Check if there are any active sessions
-    const liveIndicators = document.querySelectorAll('.live-indicator');
-    if (liveIndicators.length > 0) {
-        // Only refresh if there are active sessions to avoid unnecessary requests
-        location.reload();
-    }
-}, 30000);
-
-// Photo preview functionality
-document.getElementById('sold_photo').addEventListener('change', function(e) {
-    const file = e.target.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            document.getElementById('preview-image').src = e.target.result;
-            document.getElementById('photo-preview').style.display = 'block';
-            document.querySelector('.upload-placeholder').style.display = 'none';
-            // clear inline photo error and red border when a file is chosen
-            const photoErrorEl = document.getElementById('photo-error');
-            const uploadDiv = document.querySelector('.photo-upload-container');
-            if (photoErrorEl) { photoErrorEl.style.display = 'none'; photoErrorEl.textContent = ''; }
-            if (uploadDiv) { uploadDiv.style.border = ''; }
-        };
-        reader.readAsDataURL(file);
+// Attendance photo preview
+document.addEventListener('DOMContentLoaded', function() {
+    const photoInput = document.getElementById('sold_photo');
+    if (photoInput) {
+        photoInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('preview-image').src = e.target.result;
+                    document.getElementById('photo-preview').style.display = 'block';
+                    document.querySelector('.upload-placeholder').style.display = 'none';
+                    const photoErrorEl = document.getElementById('photo-error');
+                    if (photoErrorEl) { 
+                        photoErrorEl.style.display = 'none'; 
+                        photoErrorEl.textContent = ''; 
+                    }
+                };
+                reader.readAsDataURL(file);
+            }
+        });
     }
 });
 
-// Prevent form submit if no photo selected and show inline error
-document.querySelector('.simple-schedule-form').addEventListener('submit', function(e) {
-    const fileInput = document.getElementById('sold_photo');
-    const photoErrorEl = document.getElementById('photo-error');
+function removePhoto() {
+    document.getElementById('sold_photo').value = '';
+    document.getElementById('photo-preview').style.display = 'none';
+    document.querySelector('.upload-placeholder').style.display = 'flex';
+}
+
+// Handle attendance form submission - populate hidden slot data
+document.addEventListener('DOMContentLoaded', function() {
+    const attendanceForm = document.querySelector('.simple-schedule-form');
+    if (attendanceForm) {
+        attendanceForm.addEventListener('submit', function(e) {
+            e.preventDefault(); // Always prevent default first
+            
+            const slotSelect = document.getElementById('slot_id');
+            const durationSelect = document.getElementById('duration_choice');
+            const customSlotData = document.getElementById('custom_slot_data');
+            const photoInput = document.getElementById('sold_photo');
+            
+            // Validate selections
+            if (!durationSelect.value) {
+                alert('Please select a duration');
+                return false;
+            }
+            
+            if (!slotSelect.value) {
+                alert('Please select a time slot');
+                return false;
+            }
+            
+            if (!photoInput.files || photoInput.files.length === 0) {
+                alert('Please upload your total sold photo before submitting');
+                return false;
+            }
+            
+            // Get selected slot data from available slots
+            const allSlots = <?php echo json_encode($available_slots); ?>;
+            const selectedSlot = allSlots.find(slot => slot.id == slotSelect.value);
+            
+            if (selectedSlot) {
+                const slotData = {
+                    duration: durationSelect.value,
+                    start_time: selectedSlot.start_time,
+                    end_time: selectedSlot.end_time,
+                    name: selectedSlot.name
+                };
+                customSlotData.value = JSON.stringify(slotData);
+                
+                // Now submit the form after populating the hidden field
+                this.submit();
+            } else {
+                alert('Invalid slot selection');
+                return false;
+            }
+        });
+    }
+});
+
+function updateOvertimeSlots() {
+    const duration = document.getElementById('duration').value;
+    const slotSelect = document.getElementById('overtime_time_slot');
+    
+    if (!duration) {
+        slotSelect.innerHTML = '<option value="">Select a time slot...</option>';
+        return;
+    }
+    
+    // Fetch overtime slots based on auto-populated duration
+    fetch('<?php echo $_SERVER["REQUEST_URI"]; ?>', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'action=get_overtime_slots&duration=' + duration
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            slotSelect.innerHTML = '<option value="">Select a time slot...</option>';
+            
+            data.slots.forEach(slot => {
+                const option = document.createElement('option');
+                option.value = slot.value;
+                option.textContent = slot.text;
+                slotSelect.appendChild(option);
+            });
+            
+            const durationText = duration == 4 ? '4-Hour' : '3-Hour';
+            document.getElementById('slot-note').textContent = 
+                'Select a 2-hour overtime slot for your ' + durationText + ' shift';
+        } else {
+            alert(data.message || 'Unable to load time slots');
+            slotSelect.innerHTML = '<option value="">Select a time slot...</option>';
+        }
+    })
+    .catch(err => {
+        console.error('Error:', err);
+        alert('Error loading time slots');
+    });
+}
+
+function selectOvertimeSlot() {
+    const slotSelect = document.getElementById('overtime_time_slot');
+    const selectedValue = slotSelect.value;
+    document.getElementById('overtime_slot').value = selectedValue;
+}
+
+function closeOvertimeModal() {
+    const modal = document.getElementById('overtimeModal');
+    modal.style.display = 'none';
+    document.body.style.overflow = 'auto';
+    document.getElementById('overtimeForm').reset();
+    resetOvertimeForm();
+}
+
+// Overtime photo preview
+document.addEventListener('DOMContentLoaded', function() {
+    const overtimePhotoInput = document.getElementById('overtime_photo');
+    if (overtimePhotoInput) {
+        overtimePhotoInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('overtime_preview_image').src = e.target.result;
+                    document.getElementById('overtime_photo_preview').style.display = 'block';
+                    const placeholders = document.querySelectorAll('.overtime-form .upload-placeholder');
+                    placeholders.forEach(p => p.style.display = 'none');
+                    const photoErrorEl = document.getElementById('overtime_photo_error');
+                    if (photoErrorEl) { 
+                        photoErrorEl.style.display = 'none'; 
+                        photoErrorEl.textContent = ''; 
+                    }
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+});
+
+function removeOvertimePhoto() {
+    document.getElementById('overtime_photo').value = '';
+    document.getElementById('overtime_photo_preview').style.display = 'none';
+    const placeholders = document.querySelectorAll('.overtime-form .upload-placeholder');
+    placeholders.forEach(p => p.style.display = 'flex');
+}
+
+function resetOvertimeForm() {
+    document.getElementById('overtime_time_slot').value = '';
+    document.getElementById('overtime_time_slot').innerHTML = '<option value="">Select a time slot...</option>';
+    document.getElementById('overtime_solds').value = '';
+    document.getElementById('overtime_photo').value = '';
+    document.getElementById('overtime_photo_preview').style.display = 'none';
+    const placeholders = document.querySelectorAll('.overtime-form .upload-placeholder');
+    placeholders.forEach(p => p.style.display = 'flex');
+    document.getElementById('yourAttendanceSlot').textContent = 'Loading...';
+    document.getElementById('shiftDurationDisplay').textContent = 'Loading...';
+    document.getElementById('slot-note').textContent = 'Select a 2-hour overtime slot';
+}
+
+// Handle overtime form submission
+document.getElementById('overtimeForm').addEventListener('submit', function(e) {
+    // Set the duration value in hidden field before submitting
+    const duration = document.getElementById('duration').value;
+    document.getElementById('duration_value').value = duration;
+    
+    const fileInput = document.getElementById('overtime_photo');
+    const photoErrorEl = document.getElementById('overtime_photo_error');
+    
+    // Check if photo is selected
     if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
         e.preventDefault();
         if (photoErrorEl) {
-            photoErrorEl.textContent = 'Please upload your total sold photo before submitting the schedule.';
+            photoErrorEl.textContent = 'Please upload your overtime proof photo before submitting.';
             photoErrorEl.style.display = 'block';
-        } else {
-            alert('Please upload your total sold photo before submitting the schedule.');
         }
         return false;
     } else {
@@ -634,11 +1082,574 @@ document.querySelector('.simple-schedule-form').addEventListener('submit', funct
     }
 });
 
-function removePhoto() {
-    document.getElementById('sold_photo').value = '';
-    document.getElementById('photo-preview').style.display = 'none';
-    document.querySelector('.upload-placeholder').style.display = 'flex';
-}
+// Close modal when clicking outside
+window.addEventListener('click', function(e) {
+    const modal = document.getElementById('overtimeModal');
+    if (e.target === modal) {
+        closeOvertimeModal();
+    }
+});
 </script>
+
+<!-- Overtime Modal -->
+<div id="overtimeModal" class="overtime-modal" style="display: none;">
+    <div class="overtime-modal-content">
+        <form id="overtimeForm" method="POST" enctype="multipart/form-data" class="overtime-form">
+            <input type="hidden" name="action" value="add_overtime">
+            <input type="hidden" id="overtime_slot" name="overtime_slot" value="">
+            <input type="hidden" id="attendance_id" name="attendance_id" value="">
+            <input type="hidden" id="duration_value" name="duration" value="">
+            <input type="hidden" id="duration" value="">
+            
+            <div class="modal-body">
+                <!-- Modal Header in Body -->
+                <div style="display: flex; align-items: center; justify-content: space-between; padding: 1.5rem; margin: -2rem -2rem 1.5rem -2rem; background: linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.15)); border-bottom: 1px solid rgba(255, 255, 255, 0.1);">
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <span style="font-size: 2rem;">⏱️</span>
+                        <h2 style="margin: 0; font-size: 1.8rem; font-weight: 700; color: #ffffff;">Add Overtime</h2>
+                    </div>
+                    <button type="button" class="modal-close" onclick="closeOvertimeModal()" style="background: transparent; border: none; font-size: 2.5rem; color: rgba(255, 255, 255, 0.6); cursor: pointer; padding: 0; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 10px; transition: all 0.2s ease;">×</button>
+                </div>
+
+                <!-- Shift Duration Info Box -->
+                <div class="form-group">
+                    <label>Shift Duration:</label>
+                    <div style="padding: 1rem; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; color: #ffffff; font-size: 1.1rem; font-weight: 600;">
+                        <span id="shiftDurationDisplay">Loading...</span>
+                    </div>
+                </div>
+
+                <!-- Attendance Info Section -->
+                <div class="form-group">
+                    <label>Your Attendance Shift:</label>
+                    <div style="padding: 1rem; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; color: #ffffff; font-size: 1.1rem; font-weight: 600;">
+                        <span id="yourAttendanceSlot">Loading...</span>
+                    </div>
+                </div>
+
+                <!-- Time Slot Selection -->
+                <div class="form-group">
+                    <label for="overtime_time_slot" class="required">Overtime Time Slot (2 Hours):</label>
+                    <p class="field-hint" id="slot-note">Select a 2-hour overtime slot</p>
+                    <select id="overtime_time_slot" name="overtime_time_slot" required onchange="selectOvertimeSlot()">
+                        <option value="">Select a time slot...</option>
+                    </select>
+                </div>
+
+                <!-- Total Solds -->
+                <div class="form-group">
+                    <label for="overtime_solds">Total Solds:</label>
+                    <input type="number" id="overtime_solds" name="overtime_solds" placeholder="Enter total solds during overtime" min="0" step="1">
+                </div>
+
+                <!-- Photo Upload -->
+                <div class="form-group">
+                    <label for="overtime_photo" class="required">📱 Overtime Proof Photo:</label>
+                    <p class="field-hint">Upload photo showing your earnings/activity during overtime</p>
+                    <div class="photo-upload-container">
+                        <input type="file" id="overtime_photo" name="overtime_photo" accept="image/*" class="file-input">
+                        <div class="upload-placeholder" onclick="document.getElementById('overtime_photo').click()">
+                            <span class="upload-icon">📷</span>
+                            <p>Upload your overtime proof photo</p>
+                            <p style="font-size: 0.85rem; color: rgba(255, 255, 255, 0.6); margin: 0;">✓ Click to upload</p>
+                        </div>
+                        <div id="overtime_photo_error" class="field-error" style="color:#ff6b6b; margin-top:8px; display: none;">
+                        </div>
+                        <div id="overtime_photo_preview" class="photo-preview" style="display: none;">
+                            <img id="overtime_preview_image" src="" alt="Preview">
+                            <button type="button" class="remove-photo" onclick="removeOvertimePhoto()">×</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeOvertimeModal()">
+                    <span class="btn-icon">✕</span>
+                    Cancel
+                </button>
+                <button type="submit" class="btn btn-primary">
+                    <span class="btn-icon">✓</span>
+                    Proceed
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Overtime Modal CSS -->
+<style>
+.overtime-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    backdrop-filter: blur(2px);
+    animation: fadeIn 0.3s ease-out;
+}
+
+.overtime-modal-content {
+    background: #1a1a2e;
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    width: 90%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    animation: slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 2rem;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.15));
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.modal-title {
+    margin: 0;
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.modal-title::before {
+    content: '⏱️';
+    font-size: 2rem;
+}
+
+.modal-close {
+    background: transparent;
+    border: none;
+    font-size: 2.5rem;
+    color: rgba(255, 255, 255, 0.6);
+    cursor: pointer;
+    padding: 0;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    transition: all 0.2s ease;
+}
+
+.modal-close:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+}
+
+.modal-body {
+    padding: 2rem;
+}
+
+.info-section {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 1.5rem;
+    background: rgba(102, 126, 234, 0.1);
+    border: 1px solid rgba(102, 126, 234, 0.3);
+    border-radius: 16px;
+    margin-bottom: 2rem;
+}
+
+.section-icon {
+    font-size: 2.5rem;
+    flex-shrink: 0;
+}
+
+.section-content {
+    flex: 1;
+}
+
+.section-label {
+    margin: 0 0 0.5rem 0;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.6);
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.section-value {
+    margin: 0;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 0.75rem 1rem;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.overtime-form .form-group {
+    margin-bottom: 2rem;
+}
+
+.overtime-form label {
+    display: block;
+    margin-bottom: 0.75rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.overtime-form label.required::after {
+    content: ' *';
+    color: #ff6b6b;
+}
+
+.field-hint {
+    margin: -0.5rem 0 1rem 0;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.6);
+    font-style: italic;
+}
+
+.overtime-form select,
+.overtime-form input[type="number"] {
+    width: 100%;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    color: #ffffff;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    font-family: inherit;
+}
+
+.overtime-form select:focus,
+.overtime-form input[type="number"]:focus {
+    outline: none;
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(102, 126, 234, 0.5);
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.overtime-form select:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.overtime-form option {
+    background: #1a1a2e;
+    color: #ffffff;
+}
+
+.overtime-form .photo-upload-container {
+    position: relative;
+    border: 2px dashed rgba(102, 126, 234, 0.3);
+    border-radius: 16px;
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.overtime-form .photo-upload-container:hover {
+    border-color: rgba(102, 126, 234, 0.6);
+    background: rgba(102, 126, 234, 0.05);
+}
+
+.overtime-form .upload-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    cursor: pointer;
+    text-align: center;
+}
+
+.overtime-form .upload-icon {
+    font-size: 3rem;
+    display: block;
+}
+
+.overtime-form .upload-placeholder p {
+    margin: 0;
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.8);
+    font-weight: 500;
+}
+
+.overtime-form .btn-outline {
+    background: transparent;
+    border: 1.5px solid rgba(102, 126, 234, 0.5);
+    color: #667eea;
+    padding: 0.75rem 1.5rem;
+    border-radius: 10px;
+    transition: all 0.2s ease;
+}
+
+.overtime-form .btn-outline:hover {
+    background: rgba(102, 126, 234, 0.1);
+    border-color: rgba(102, 126, 234, 0.8);
+}
+
+.overtime-form .photo-preview {
+    position: relative;
+    margin-top: 1rem;
+    border-radius: 12px;
+    overflow: hidden;
+    max-height: 250px;
+}
+
+.overtime-form .photo-preview img {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.overtime-form .remove-photo {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 36px;
+    height: 36px;
+    background: rgba(0, 0, 0, 0.7);
+    border: none;
+    border-radius: 50%;
+    color: white;
+    font-size: 1.5rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.overtime-form .remove-photo:hover {
+    background: rgba(0, 0, 0, 0.9);
+    transform: scale(1.1);
+}
+
+.modal-footer {
+    display: flex;
+    gap: 1rem;
+    padding: 2rem;
+    background: transparent;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    justify-content: flex-end;
+}
+
+.modal-footer .btn {
+    min-width: 120px;
+    padding: 1rem 1.5rem;
+    border-radius: 12px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.modal-footer .btn-secondary {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.modal-footer .btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+}
+
+.modal-footer .btn-primary {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    border: none;
+    color: white;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.modal-footer .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.field-error {
+    color: #ff6b6b;
+    font-size: 0.9rem;
+    margin-top: 0.5rem;
+    display: none;
+}
+
+/* File input hidden */
+.overtime-form .file-input {
+    display: none;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Scrollbar styling for modal */
+.overtime-modal-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.overtime-modal-content::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.overtime-modal-content::-webkit-scrollbar-thumb {
+    background: rgba(102, 126, 234, 0.3);
+    border-radius: 4px;
+}
+
+.overtime-modal-content::-webkit-scrollbar-thumb:hover {
+    background: rgba(102, 126, 234, 0.5);
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+    .overtime-modal-content {
+        width: 95%;
+        max-height: 95vh;
+        border-radius: 16px;
+    }
+    
+    .modal-header {
+        padding: 1.5rem;
+    }
+    
+    .modal-body {
+        padding: 1.5rem;
+    }
+    
+    .modal-footer {
+        flex-direction: column;
+        padding: 1.5rem;
+    }
+    
+    .modal-footer .btn {
+        width: 100%;
+        min-width: auto;
+    }
+    
+    .modal-title {
+        font-size: 1.5rem;
+    }
+    
+    .overtime-form .photo-upload-container {
+        padding: 1.2rem !important;
+        border: 2px dashed rgba(102, 126, 234, 0.4) !important;
+        min-height: 180px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 16px;
+    }
+    
+    .overtime-form .upload-placeholder {
+        gap: 0.75rem;
+    }
+    
+    .overtime-form .upload-icon {
+        font-size: 2.5rem;
+    }
+    
+    .overtime-form .upload-placeholder p {
+        font-size: 0.95rem;
+        line-height: 1.4;
+        margin: 0;
+    }
+    
+    .overtime-form .photo-preview {
+        max-height: 200px;
+    }
+    
+    .overtime-form .remove-photo {
+        width: 32px;
+        height: 32px;
+        font-size: 1.2rem;
+    }
+    
+    .overtime-form .form-group {
+        margin-bottom: 1.5rem;
+    }
+    
+    .overtime-form label {
+        font-size: 0.95rem;
+        margin-bottom: 0.6rem;
+    }
+    
+    .field-hint {
+        font-size: 0.8rem;
+        margin: -0.3rem 0 0.8rem 0;
+    }
+    
+    .overtime-form select,
+    .overtime-form input[type="number"] {
+        padding: 0.85rem;
+        font-size: 0.95rem;
+    }
+    
+    /* Attendance form responsive styles */
+    .photo-upload-container {
+        padding: 1.2rem !important;
+        border: 2px dashed rgba(102, 126, 234, 0.4) !important;
+        min-height: 180px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .upload-placeholder {
+        gap: 0.75rem;
+    }
+    
+    .upload-icon {
+        font-size: 2.5rem;
+    }
+    
+    .upload-placeholder p {
+        font-size: 0.95rem;
+        line-height: 1.4;
+    }
+    
+    .photo-preview {
+        max-height: 200px;
+    }
+    
+    .remove-photo {
+        width: 32px;
+        height: 32px;
+        font-size: 1.2rem;
+    }
+}
+</style>
 
 <?php include 'layout/footer.php'; ?>

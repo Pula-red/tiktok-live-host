@@ -139,12 +139,18 @@ $current_user = get_logged_in_user();
                         <span class="nav-text">Pending Attendance</span>
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a href="pending_overtime.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'pending_overtime.php' ? 'active' : ''; ?>">
+                        <span class="nav-icon">⏱️</span>
+                        <span class="nav-text">Pending Overtime</span>
+                    </a>
+                </li>
                 
                 <li class="nav-section-title">Payment</li>
                 <li class="nav-item">
                     <a href="host-payments.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'host-payments.php' ? 'active' : ''; ?>">
                         <span class="nav-icon">💰</span>
-                        <span class="nav-text">Host Payments</span>
+                        <span class="nav-text">Payment History</span>                   
                     </a>
                 </li>
                 <li class="nav-item">

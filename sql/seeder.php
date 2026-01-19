@@ -15,15 +15,26 @@ require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/database.php';
 
 // Default attendance time slots
+// 3-hour shifts: 5am-8am, 8am-11am, 11am-2pm, 2pm-5pm, 5pm-8pm, 8pm-11pm, 11pm-2am, 2am-5am
+// 4-hour shifts: 6am-10am, 10am-2pm, 2pm-6pm, 6pm-10pm, 10pm-2am, 2am-6am
 $default_time_slots = [
-    ['name' => 'Morning Shift (3hrs)', 'duration_hours' => 3.0, 'start_time' => '07:00:00', 'end_time' => '10:00:00'],
-    ['name' => 'Late Morning (4hrs)', 'duration_hours' => 4.0, 'start_time' => '08:00:00', 'end_time' => '12:00:00'],
-    ['name' => 'Afternoon Shift (3hrs)', 'duration_hours' => 3.0, 'start_time' => '13:00:00', 'end_time' => '16:00:00'],
-    ['name' => 'Evening Shift (4hrs)', 'duration_hours' => 4.0, 'start_time' => '16:00:00', 'end_time' => '20:00:00'],
-    ['name' => 'Night Shift (3hrs)', 'duration_hours' => 3.0, 'start_time' => '20:00:00', 'end_time' => '23:00:00'],
-    ['name' => 'Extended Day (6hrs)', 'duration_hours' => 6.0, 'start_time' => '10:00:00', 'end_time' => '16:00:00'],
-    ['name' => 'Split Shift AM (2hrs)', 'duration_hours' => 2.0, 'start_time' => '07:00:00', 'end_time' => '09:00:00'],
-    ['name' => 'Split Shift PM (2hrs)', 'duration_hours' => 2.0, 'start_time' => '18:00:00', 'end_time' => '20:00:00']
+    // 3-hour shifts
+    ['name' => '5 AM - 8 AM', 'duration_hours' => 3.0, 'start_time' => '05:00:00', 'end_time' => '08:00:00'],
+    ['name' => '8 AM - 11 AM', 'duration_hours' => 3.0, 'start_time' => '08:00:00', 'end_time' => '11:00:00'],
+    ['name' => '11 AM - 2 PM', 'duration_hours' => 3.0, 'start_time' => '11:00:00', 'end_time' => '14:00:00'],
+    ['name' => '2 PM - 5 PM', 'duration_hours' => 3.0, 'start_time' => '14:00:00', 'end_time' => '17:00:00'],
+    ['name' => '5 PM - 8 PM', 'duration_hours' => 3.0, 'start_time' => '17:00:00', 'end_time' => '20:00:00'],
+    ['name' => '8 PM - 11 PM', 'duration_hours' => 3.0, 'start_time' => '20:00:00', 'end_time' => '23:00:00'],
+    ['name' => '11 PM - 2 AM', 'duration_hours' => 3.0, 'start_time' => '23:00:00', 'end_time' => '02:00:00'],
+    ['name' => '2 AM - 5 AM', 'duration_hours' => 3.0, 'start_time' => '02:00:00', 'end_time' => '05:00:00'],
+    
+    // 4-hour shifts
+    ['name' => '6 AM - 10 AM', 'duration_hours' => 4.0, 'start_time' => '06:00:00', 'end_time' => '10:00:00'],
+    ['name' => '10 AM - 2 PM', 'duration_hours' => 4.0, 'start_time' => '10:00:00', 'end_time' => '14:00:00'],
+    ['name' => '2 PM - 6 PM', 'duration_hours' => 4.0, 'start_time' => '14:00:00', 'end_time' => '18:00:00'],
+    ['name' => '6 PM - 10 PM', 'duration_hours' => 4.0, 'start_time' => '18:00:00', 'end_time' => '22:00:00'],
+    ['name' => '10 PM - 2 AM', 'duration_hours' => 4.0, 'start_time' => '22:00:00', 'end_time' => '02:00:00'],
+    ['name' => '2 AM - 6 AM', 'duration_hours' => 4.0, 'start_time' => '02:00:00', 'end_time' => '06:00:00'],
 ];
 
 function seedAdminUser() {

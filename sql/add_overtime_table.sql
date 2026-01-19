@@ -1,0 +1,27 @@
+-- Add overtime tracking table
+CREATE TABLE IF NOT EXISTS `overtime` (
+    `id` INT NOT NULL AUTO_INCREMENT,
+    `seller_id` INT NOT NULL,
+    `attendance_id` INT NOT NULL,
+    `overtime_date` date NOT NULL,
+    `duration_hours` INT NOT NULL COMMENT '3 or 4 hours',
+    `start_time` time NOT NULL,
+    `end_time` time NOT NULL,
+    `solds_quantity` INT DEFAULT 0,
+    `overtime_photo` varchar(255) DEFAULT NULL,
+    `status` enum('pending_approval','approved','rejected') NOT NULL DEFAULT 'pending_approval',
+    `approved_by` INT DEFAULT NULL,
+    `approved_at` timestamp NULL DEFAULT NULL,
+    `rejection_reason` text DEFAULT NULL,
+    `notes` text DEFAULT NULL,
+    `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_seller_id` (`seller_id`),
+    KEY `idx_attendance_id` (`attendance_id`),
+    KEY `idx_overtime_date` (`overtime_date`),
+    KEY `idx_status` (`status`),
+    FOREIGN KEY (`seller_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`attendance_id`) REFERENCES `attendance`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`approved_by`) REFERENCES `users`(`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

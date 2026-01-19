@@ -70,11 +70,16 @@ foreach ($accounts as $acct) {
                 }
             }
             
-            // Get this member's attendance for their "today"
+            // Get this member's attendance and overtime combined for their "today"
             $memberStmt = $db->prepare("
-                SELECT SUM(solds_quantity) as sales, SUM(hours_worked) as hours 
-                FROM attendance 
-                WHERE seller_id = ? AND attendance_date = ? AND status = 'approved'
+                SELECT 
+                    COALESCE(SUM(a.solds_quantity), 0) + COALESCE(SUM(o.solds_quantity), 0) as sales,
+                    COALESCE(SUM(a.hours_worked), 0) + COALESCE(SUM(o.duration_hours), 0) as hours
+                FROM (SELECT ? as member_id, ? as check_date) filter_data
+                LEFT JOIN attendance a ON a.seller_id = filter_data.member_id 
+                    AND a.attendance_date = filter_data.check_date AND a.status = 'approved'
+                LEFT JOIN overtime o ON o.seller_id = filter_data.member_id 
+                    AND o.overtime_date = filter_data.check_date AND o.status = 'approved'
             ");
             $memberStmt->execute([$member_id, $member_today]);
             $memberData = $memberStmt->fetch();

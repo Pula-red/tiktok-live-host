@@ -1695,6 +1695,15 @@
 }
 
 /* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
 @keyframes fadeInUp {
     from {
         opacity: 0;
@@ -1702,7 +1711,7 @@
     }
     to {
         opacity: 1;
-        transform: translateY(0);
+        transform: translateY(0)
     }
 }
 
@@ -2253,6 +2262,28 @@
     font-size: 1.3rem;
 }
 
+/* Updated Add Overtime Button Styling */
+.btn-overtime {
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.2), rgba(251, 146, 60, 0.2)) !important;
+    border: 1px solid rgba(251, 191, 36, 0.4) !important;
+    color: #fbbf24 !important;
+    font-size: 1rem;
+    font-weight: 600;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    text-align: center;
+    display: inline-block;
+    width: auto;
+    margin: 0 auto;
+}
+
+.btn-overtime:hover {
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.3), rgba(251, 146, 60, 0.3)) !important;
+    border-color: rgba(251, 191, 36, 0.7) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(251, 191, 36, 0.2) !important;
+}
+
 /* Responsive Design for Live Seller */
 @media (max-width: 1024px) {
     .live-seller-layout .dashboard-grid {
@@ -2504,41 +2535,7 @@
     font-size: 0.9rem;
 }
 
-.slot-status {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.slot-actions {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    align-items: flex-end;
-}
-
-.live-indicator {
-    background: #ff4444;
-    color: white;
-    padding: 0.25rem 0.75rem;
-    border-radius: 15px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    animation: livePulse 2s infinite;
-}
-
-.active-session {
-    text-align: right;
-}
-
-.active-session small {
-    display: block;
-    color: rgba(255, 255, 255, 0.8);
-    font-size: 0.8rem;
-    margin-top: 0.25rem;
-}
-
-.completed-session {
+.slot {
     text-align: right;
 }
 
@@ -2560,11 +2557,6 @@
     background: transparent;
     border: 2px solid rgba(255, 255, 255, 0.3);
     color: white;
-}
-
-.btn-outline:hover {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.5);
 }
 
 /* Status Badge Variations for Attendance */
@@ -2719,11 +2711,6 @@
     background: rgba(37, 244, 238, 0.1);
     color: var(--secondary-color);
     border: 1px solid rgba(37, 244, 238, 0.3);
-}
-
-.btn-secondary:hover {
-    background: rgba(37, 244, 238, 0.2);
-    transform: translateY(-2px);
 }
 
 /* Simple Schedule Layout */
@@ -3407,7 +3394,7 @@
 /* Enhanced Attendance Completed Card */
 .attendance-completed-card.enhanced {
     background: linear-gradient(135deg, rgba(245, 158, 11, 0.08), rgba(251, 191, 36, 0.05));
-    border: 2px solid rgba(245, 158, 11, 0.2);
+    border: 2px solid rgba(245, 158, 11, 0.4);
     border-radius: 20px;
     padding: 0;
     max-width: 600px;
@@ -3587,27 +3574,6 @@
     transform: translateX(3px);
 }
 
-/* Animations */
-@keyframes iconFloat {
-    0%, 100% {
-        transform: translateY(0px);
-    }
-    50% {
-        transform: translateY(-10px);
-    }
-}
-
-@keyframes checkmarkPulse {
-    0%, 100% {
-        transform: scale(1);
-        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
-    }
-    50% {
-        transform: scale(1.1);
-        box-shadow: 0 6px 20px rgba(16, 185, 129, 0.6);
-    }
-}
-
 /* Mobile responsiveness for enhanced design */
 @media (max-width: 768px) {
     .attendance-completed-card.enhanced {
@@ -3750,7 +3716,7 @@
     color: #4caf50;
     padding: 0.5rem 1rem;
     border-radius: 50px;
-    font-size: 0.875rem;
+    font-size: 0.9rem;
     font-weight: 600;
     margin-bottom: 1rem;
     border: 1px solid rgba(76, 175, 80, 0.3);
@@ -3894,32 +3860,10 @@
     top: 0;
     left: 0;
     right: 0;
-    height: 3px;
-    background: linear-gradient(90deg, transparent, var(--card-accent), transparent);
-    opacity: 0;
-    transition: opacity 0.3s ease;
-}
-
-.detail-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-    border-color: rgba(255, 255, 255, 0.2);
-}
-
-.detail-card:hover::before {
-    opacity: 1;
-}
-
-.status-card {
-    --card-accent: #4caf50;
-}
-
-.date-card {
-    --card-accent: #2196f3;
-}
-
-.limit-card {
-    --card-accent: #ff9800;
+    height: 4px;
+    background: linear-gradient(90deg, #667eea, #764ba2, #667eea);
+    background-size: 200% 100%;
+    animation: shimmer 3s linear infinite;
 }
 
 .card-icon {
@@ -4197,7 +4141,7 @@
 .completed-icon {
     font-size: 4rem;
     margin-bottom: 1.5rem;
-    animation: iconBounce 0.8s ease-out;
+    animation: iconBounce 0.8s ease-in;
     position: relative;
     z-index: 2;
 }
@@ -4548,40 +4492,6 @@
     border-color: rgba(255, 193, 7, 0.4);
 }
 
-.value-number {
-    font-size: 1.5rem;
-    font-weight: 800;
-    color: #ffffff;
-}
-
-.value-unit {
-    font-size: 0.9rem;
-    color: rgba(139, 148, 195, 0.8);
-    font-weight: 500;
-    margin-left: 0.25rem;
-}
-
-.role-badge-inline {
-    display: inline-block;
-    padding: 0.4rem 1rem;
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    color: #ffffff;
-    border-radius: 20px;
-    font-size: 0.9rem;
-    font-weight: 700;
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-}
-
-.newbie-badge {
-    background: linear-gradient(135deg, #4facfe, #00f2fe) !important;
-    box-shadow: 0 4px 12px rgba(79, 172, 254, 0.4) !important;
-}
-
-.tenured-badge {
-    background: linear-gradient(135deg, #ffa726, #fb8c00) !important;
-    box-shadow: 0 4px 12px rgba(255, 167, 38, 0.4) !important;
-}
-
 .rank-display {
     display: flex;
     align-items: baseline;
@@ -4789,4 +4699,397 @@
     font-size: 0.85rem;
     color: rgba(255, 255, 255, 0.6);
     font-style: italic;
+}
+
+/* ============================================
+   OVERTIME MODAL STYLES
+   ============================================ */
+
+/* Modal Overlay */
+.overtime-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.overtime-modal.active {
+    display: flex;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+/* Modal Content */
+.overtime-modal-content {
+    background: linear-gradient(135deg, #1a1d2e 0%, #16171f 100%);
+    border: 1px solid rgba(102, 126, 234, 0.3);
+    border-radius: 24px;
+    padding: 0;
+    max-width: 600px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(102, 126, 234, 0.3);
+    animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Modal Header */
+.overtime-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.75rem;
+    border-bottom: 1px solid rgba(102, 126, 234, 0.2);
+    background: rgba(102, 126, 234, 0.08);
+}
+
+.overtime-modal-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.modal-close {
+    background: transparent;
+    border: none;
+    color: #ffffff;
+    font-size: 2rem;
+    cursor: pointer;
+    padding: 0;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+}
+
+.modal-close:hover {
+    background: rgba(102, 126, 234, 0.2);
+    color: #667eea;
+}
+
+/* Overtime Form */
+.overtime-form {
+    padding: 1.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.overtime-form .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.overtime-form label {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.overtime-form label.required::after {
+    content: ' *';
+    color: #ff6b6b;
+}
+
+.overtime-form select,
+.overtime-form input[type="number"],
+.overtime-form input[type="file"] {
+    padding: 0.75rem 1rem;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(102, 126, 234, 0.3);
+    border-radius: 12px;
+    color: #ffffff;
+    font-size: 0.95rem;
+    transition: all 0.2s ease;
+}
+
+.overtime-form select:focus,
+.overtime-form input[type="number"]:focus {
+    outline: none;
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(102, 126, 234, 0.6);
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.overtime-form select option {
+    background: #1a1d2e;
+    color: #ffffff;
+}
+
+.overtime-form input[type="number"]::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.overtime-form select:disabled,
+.overtime-form input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Photo Upload Container in Modal */
+.overtime-form .photo-upload-container {
+    border: 2px dashed rgba(102, 126, 234, 0.3);
+    border-radius: 12px;
+    padding: 1.5rem;
+    background: rgba(102, 126, 234, 0.05);
+    transition: all 0.2s ease;
+}
+
+.overtime-form .photo-upload-container:hover {
+    border-color: rgba(102, 126, 234, 0.6);
+    background: rgba(102, 126, 234, 0.1);
+}
+
+.overtime-form .file-input {
+    display: none;
+}
+
+.overtime-form .upload-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    cursor: pointer;
+    text-align: center;
+}
+
+.overtime-form .upload-placeholder .upload-icon {
+    font-size: 2.5rem;
+}
+
+.overtime-form .upload-placeholder p {
+    margin: 0;
+    color: #ffffff;
+    font-weight: 500;
+}
+
+.overtime-form .upload-placeholder .btn {
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+}
+
+/* Photo Preview */
+.overtime-form .photo-preview {
+    position: relative;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-top: 1rem;
+}
+
+.overtime-form .photo-preview img {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    border-radius: 8px;
+}
+
+.overtime-form .remove-photo {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    font-size: 1.5rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.overtime-form .remove-photo:hover {
+    background: rgba(255, 107, 107, 0.8);
+    transform: scale(1.1);
+}
+
+/* Field Error */
+.field-error {
+    font-size: 0.85rem;
+    color: #ff6b6b;
+    margin-top: 0.5rem;
+}
+
+/* Modal Footer */
+.overtime-form .form-footer {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgba(102, 126, 234, 0.2);
+}
+
+.overtime-form .form-footer button {
+    flex: 1;
+    padding: 0.85rem 1.5rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    border-radius: 12px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+/* Button Styles for Modal */
+.btn-outline {
+    background: transparent;
+    border: 1px solid rgba(102, 126, 234, 0.4) !important;
+    color: #ffffff !important;
+}
+
+.btn-outline:hover {
+    background: rgba(102, 126, 234, 0.1) !important;
+    border-color: rgba(102, 126, 234, 0.7) !important;
+}
+
+.btn-secondary {
+    background: rgba(102, 126, 234, 0.2) !important;
+    border: 1px solid rgba(102, 126, 234, 0.4) !important;
+    color: #8b94e7 !important;
+}
+
+.btn-secondary:hover {
+    background: rgba(102, 126, 234, 0.3) !important;
+    border-color: rgba(102, 126, 234, 0.7) !important;
+    transform: translateY(-2px);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #667eea, #764ba2) !important;
+    border: none !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3) !important;
+}
+
+.btn-primary:hover {
+    box-shadow: 0 6px 25px rgba(102, 126, 234, 0.4) !important;
+    transform: translateY(-2px);
+}
+
+/* Footer Actions Layout */
+.footer-actions {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.footer-actions .btn {
+    flex: 1;
+    min-width: 150px;
+}
+
+/* Updated Add Overtime Button Styling */
+.btn-overtime {
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.2), rgba(251, 146, 60, 0.2)) !important;
+    border: 1px solid rgba(251, 191, 36, 0.4) !important;
+    color: #fbbf24 !important;
+    font-size: 1rem;
+    font-weight: 600;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    text-align: center;
+    display: inline-block;
+    width: auto;
+    margin: 0 auto;
+}
+
+.btn-overtime:hover {
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.3), rgba(251, 146, 60, 0.3)) !important;
+    border-color: rgba(251, 191, 36, 0.7) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(251, 191, 36, 0.2) !important;
+}
+
+/* Responsive Design for Modal */
+@media (max-width: 768px) {
+    .overtime-modal-content {
+        max-width: 95vw;
+        border-radius: 16px;
+    }
+    
+    .overtime-modal-header {
+        padding: 1.5rem;
+    }
+    
+    .overtime-modal-header h2 {
+        font-size: 1.25rem;
+    }
+    
+    .overtime-form {
+        padding: 1.5rem;
+        gap: 1.25rem;
+    }
+    
+    .footer-actions {
+        flex-direction: column;
+    }
+    
+    .footer-actions .btn {
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .overtime-modal {
+        padding: 0.5rem;
+    }
+    
+    .overtime-modal-content {
+        max-height: calc(100vh - 1rem);
+        border-radius: 12px;
+    }
+    
+    .overtime-modal-header {
+        padding: 1.25rem;
+    }
+    
+    .overtime-modal-header h2 {
+        font-size: 1rem;
+    }
+    
+    .overtime-form {
+        padding: 1.25rem;
+        gap: 1rem;
+    }
 }

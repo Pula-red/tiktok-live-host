@@ -255,6 +255,57 @@ include 'layout/header.php';
             <p>Choose a month to view your performance for both pay periods</p>
         </div>
     <?php endif; ?>
+
+    <div class="user-data-container">
+        <div class="table-header-top" style="display: flex; justify-content: space-between; align-items: center;">
+            <h2 class="table-main-title">Daily Performance History</h2>
+            <form method="GET" action="" id="filterForm" class="filter-controls" style="margin-left: auto;">
+                <input type="date" name="filter_date" id="filter_date_input" class="table-date-filter" value="<?php echo htmlspecialchars($_GET['filter_date'] ?? date('Y-m-d')); ?>" onchange="this.form.submit()" style="max-width: 200px;">
+            </form>
+        </div>
+        <div class="table-header" style="display: flex; justify-content: space-between; align-items: center;">
+        </div>
+        <table class="user-data-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Attendance Status</th>
+                    <th>Hours Worked</th>
+                    <th>Total Sales</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php
+                $filter_date = $_GET['filter_date'] ?? date('Y-m-d');
+                $stmt = $db->prepare("
+                    SELECT a.attendance_date, a.status, 
+                           (a.hours_worked + COALESCE(ot.duration_hours, 0)) as hours_worked,
+                           (a.solds_quantity + COALESCE(ot.solds_quantity, 0)) as solds_quantity
+                    FROM attendance a
+                    LEFT JOIN overtime ot ON a.id = ot.attendance_id AND ot.status = 'approved'
+                    WHERE a.status = 'approved' AND a.seller_id = ?
+                    ORDER BY a.attendance_date DESC
+                ");
+                $stmt->execute([$current_user['id']]);
+                $user_data = $stmt->fetchAll();
+
+                if (!empty($user_data)):
+                    foreach ($user_data as $record): ?>
+                        <tr>
+                            <td><?php echo date('M d, Y', strtotime($record['attendance_date'])); ?></td>
+                            <td><?php echo htmlspecialchars($record['status']); ?></td>
+                            <td><?php echo htmlspecialchars($record['hours_worked']); ?></td>
+                            <td><?php echo htmlspecialchars($record['solds_quantity']); ?></td>
+                        </tr>
+                    <?php endforeach;
+                else: ?>
+                    <tr>
+                        <td colspan="4" class="no-data">No records found</td>
+                    </tr>
+                <?php endif; ?>
+            </tbody>
+        </table>
+    </div>
 </div>
 
 <style>
@@ -329,6 +380,13 @@ include 'layout/header.php';
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 0.75rem center;
+    min-width: 150px;
+}
+
+input[type="date"].filter-dropdown {
+    appearance: auto;
+    background-image: none;
+    padding: 0.625rem 1rem;
     min-width: 150px;
 }
 
@@ -431,6 +489,98 @@ include 'layout/header.php';
     font-weight: 700;
 }
 
+/* Filter Container */
+.filter-container {
+    display: none;
+}
+
+/* User Data Table */
+.user-data-container {
+    margin-top: 2rem;
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.table-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem 2rem;
+    background: #f9fafb;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.table-header-top {
+    padding: 2rem 2rem 0 2rem;
+    background: white;
+}
+
+.table-main-title {
+    margin: 0 0 1rem 0;
+    font-size: 1.5rem;
+    color: #374151;
+    font-weight: 700;
+}
+
+.table-date-filter {
+    padding: 0.625rem 1rem;
+    font-size: 0.95rem;
+    color: #374151;
+    background: white;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 200px;
+}
+
+.table-date-filter:hover {
+    border-color: #9ca3af;
+    background-color: #fafbfc;
+}
+
+.table-date-filter:focus {
+    outline: none;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.user-data-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.user-data-table th,
+.user-data-table td {
+    padding: 1.25rem 1.5rem;
+    text-align: left;
+    border-bottom: 1px solid #e5e7eb;
+    color: #111827;
+    font-size: 0.95rem;
+}
+
+.user-data-table th {
+    background: #f9fafb;
+    color: #374151;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 0.875rem;
+    letter-spacing: 0.5px;
+}
+
+.user-data-table tbody tr:hover {
+    background: #f1f5f9;
+}
+
+.no-data {
+    text-align: center;
+    color: #9ca3af;
+    font-style: italic;
+    padding: 2rem 1.5rem !important;
+}
+
 .select-period-message,
 .empty-state {
     text-align: center;
@@ -476,6 +626,8 @@ include 'layout/header.php';
     .filter-controls {
         width: 100%;
         flex-direction: column;
+        align-items: flex-end;
+        gap: 1rem;
     }
     
     .filter-dropdown {
@@ -506,6 +658,55 @@ include 'layout/header.php';
     
     .value-text {
         font-size: 0.9375rem;
+    }
+
+    .filter-container {
+        padding: 1rem;
+    }
+
+    .filter-form {
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .filter-form input[type="date"] {
+        width: 100%;
+    }
+
+    .user-data-table th,
+    .user-data-table td {
+        padding: 0.75rem 1rem;
+        font-size: 0.875rem;
+    }
+
+    .table-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .table-header form {
+        width: 100%;
+        justify-content: flex-end;
+    }
+
+    .table-date-filter {
+        max-width: 100%;
+        width: 100%;
+    }
+
+    .table-header-top {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .filter-controls {
+        width: 100%;
+    }
+
+    .table-date-filter {
+        width: 100%;
     }
 }
 </style>

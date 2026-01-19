@@ -30,7 +30,24 @@ if (isset($_GET['ajax_action']) && $_GET['ajax_action'] === 'get_seller_stats') 
     $stmt->execute([$seller_id, $current_period['start_date'], $current_period['end_date']]);
     $user_stats = $stmt->fetch();
     
-    // Get all users rankings
+    // Get user's overtime stats
+    $stmt = $db->prepare("
+        SELECT 
+            COUNT(*) as overtime_count,
+            COALESCE(SUM(solds_quantity), 0) as overtime_sales,
+            COALESCE(SUM(duration_hours), 0) as overtime_hours
+        FROM overtime 
+        WHERE seller_id = ? AND status = 'approved'
+            AND overtime_date BETWEEN ? AND ?
+    ");
+    $stmt->execute([$seller_id, $current_period['start_date'], $current_period['end_date']]);
+    $user_overtime = $stmt->fetch();
+    
+    // Combine stats: attendance + overtime
+    $user_stats['total_working_hours'] = (float)$user_stats['total_working_hours'] + (float)$user_overtime['overtime_hours'];
+    $user_stats['total_sales'] = (int)$user_stats['total_sales'] + (int)$user_overtime['overtime_sales'];
+    
+    // Get all users rankings (including overtime)
     $stmt = $db->prepare("
         SELECT 
             u.id,
@@ -38,17 +55,20 @@ if (isset($_GET['ajax_action']) && $_GET['ajax_action'] === 'get_seller_stats') 
             u.username,
             u.profile_image,
             COUNT(DISTINCT a.attendance_date) as working_days,
-            COALESCE(SUM(a.hours_worked), 0) as working_hours,
-            COALESCE(SUM(a.solds_quantity), 0) as total_sales
+            COALESCE(SUM(a.hours_worked), 0) + COALESCE(SUM(o.duration_hours), 0) as working_hours,
+            COALESCE(SUM(a.solds_quantity), 0) + COALESCE(SUM(o.solds_quantity), 0) as total_sales
         FROM users u
         LEFT JOIN attendance a ON u.id = a.seller_id 
             AND a.status = 'approved'
             AND a.attendance_date BETWEEN ? AND ?
+        LEFT JOIN overtime o ON u.id = o.seller_id
+            AND o.status = 'approved'
+            AND o.overtime_date BETWEEN ? AND ?
         WHERE u.role = 'live_seller' AND u.status = 'active'
         GROUP BY u.id, u.full_name, u.username, u.profile_image
         ORDER BY total_sales DESC, working_hours DESC, working_days DESC
     ");
-    $stmt->execute([$current_period['start_date'], $current_period['end_date']]);
+    $stmt->execute([$current_period['start_date'], $current_period['end_date'], $current_period['start_date'], $current_period['end_date']]);
     $all_users = $stmt->fetchAll();
     
     // Find current user's rank
@@ -148,7 +168,7 @@ $stmt = $db->prepare("
 $stmt->execute([$current_user['id'], $current_period['start_date'], $current_period['end_date']]);
 $user_working_hours = $stmt->fetch()['total_working_hours'] ?? 0;
 
-// Get user's total sales
+// Get user's total sales (attendance + overtime)
 $stmt = $db->prepare("
     SELECT COALESCE(SUM(solds_quantity), 0) as total_sales
     FROM attendance
@@ -156,9 +176,20 @@ $stmt = $db->prepare("
         AND attendance_date BETWEEN ? AND ?
 ");
 $stmt->execute([$current_user['id'], $current_period['start_date'], $current_period['end_date']]);
-$user_total_sales = $stmt->fetch()['total_sales'] ?? 0;
+$attendance_sales = $stmt->fetch()['total_sales'] ?? 0;
 
-// Get all users with their stats for ranking (based on total sales) for current pay period
+$stmt = $db->prepare("
+    SELECT COALESCE(SUM(solds_quantity), 0) as total_sales
+    FROM overtime
+    WHERE seller_id = ? AND status = 'approved'
+        AND overtime_date BETWEEN ? AND ?
+");
+$stmt->execute([$current_user['id'], $current_period['start_date'], $current_period['end_date']]);
+$overtime_sales = $stmt->fetch()['total_sales'] ?? 0;
+
+$user_total_sales = $attendance_sales + $overtime_sales;
+
+// Get all users with their stats for ranking (including overtime)
 $stmt = $db->prepare("
     SELECT 
         u.id,
@@ -166,17 +197,20 @@ $stmt = $db->prepare("
         u.username,
         u.profile_image,
         COUNT(DISTINCT a.attendance_date) as working_days,
-        COALESCE(SUM(a.hours_worked), 0) as working_hours,
-        COALESCE(SUM(a.solds_quantity), 0) as total_sales
+        COALESCE(SUM(a.hours_worked), 0) + COALESCE(SUM(o.duration_hours), 0) as working_hours,
+        COALESCE(SUM(a.solds_quantity), 0) + COALESCE(SUM(o.solds_quantity), 0) as total_sales
     FROM users u
     LEFT JOIN attendance a ON u.id = a.seller_id 
-        AND a.status IN ('completed', 'checked_in', 'pending_approval', 'approved')
+        AND a.status = 'approved'
         AND a.attendance_date BETWEEN ? AND ?
+    LEFT JOIN overtime o ON u.id = o.seller_id
+        AND o.status = 'approved'
+        AND o.overtime_date BETWEEN ? AND ?
     WHERE u.role = 'live_seller' AND u.status = 'active'
     GROUP BY u.id, u.full_name
     ORDER BY total_sales DESC, working_hours DESC, working_days DESC
 ");
-$stmt->execute([$current_period['start_date'], $current_period['end_date']]);
+$stmt->execute([$current_period['start_date'], $current_period['end_date'], $current_period['start_date'], $current_period['end_date']]);
 $all_users_rankings = $stmt->fetchAll();
 
 // Find current user's rank

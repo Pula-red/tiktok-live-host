@@ -142,15 +142,17 @@ if (isset($_POST['action']) && $_POST['action'] === 'calculate_earnings') {
             exit;
         }
         
-        // Calculate earnings from approved attendance (only hours × rate)
+        // Calculate earnings from approved attendance + overtime (both hours × rate)
         $stmt = $db->prepare("
             SELECT 
-                SUM(hours_worked) as total_hours,
-                COUNT(*) as total_days
-            FROM attendance
-            WHERE seller_id = ?
-                AND attendance_date BETWEEN ? AND ?
-                AND status = 'approved'
+                COALESCE(SUM(CASE WHEN a.id IS NOT NULL THEN a.hours_worked ELSE 0 END), 0) +
+                COALESCE(SUM(CASE WHEN o.id IS NOT NULL THEN o.duration_hours ELSE 0 END), 0) as total_hours,
+                COUNT(DISTINCT a.attendance_date) as total_days
+            FROM (SELECT ? as seller_id, ? as start_dt, ? as end_dt) filter_data
+            LEFT JOIN attendance a ON a.seller_id = filter_data.seller_id 
+                AND a.attendance_date BETWEEN filter_data.start_dt AND filter_data.end_dt AND a.status = 'approved'
+            LEFT JOIN overtime o ON o.seller_id = filter_data.seller_id 
+                AND o.overtime_date BETWEEN filter_data.start_dt AND filter_data.end_dt AND o.status = 'approved'
         ");
         $stmt->execute([$user_id, $period_start, $period_end]);
         $earnings = $stmt->fetch();
@@ -497,14 +499,14 @@ $total_payments = count($payments);
 $total_amount = array_sum(array_column($payments, 'amount'));
 $unique_users = count(array_unique(array_column($payments, 'user_id')));
 
-$page_title = 'Host Payments';
+$page_title = 'Payment History';
 include 'layout/header.php';
 ?>
 
 <div class="payments-container">
     <div class="page-header">
-        <h1>💰 Host Payments</h1>
-        <p>Upload payment receipts for live sellers</p>
+        <h1>📋 Payment History</h1>
+        <p>View uploaded payment receipts and history</p>
     </div>
 
     <?php if ($success_message): ?>
@@ -521,134 +523,309 @@ include 'layout/header.php';
         </div>
     <?php endif; ?>
 
-    <!-- Upload Payment Form -->
-    <div class="form-card">
+    <!-- Account Payment Overview -->
+    <div class="accounts-overview-card">
         <div class="card-header-section">
             <div class="header-left">
-                <h2>💰 Host Payment</h2>
-                <form method="GET" id="filterForm" class="inline-filter">
-                    <label for="filter_period">📅 Choose Pay Period:</label>
-                    <select id="filter_period" name="filter_period" onchange="this.form.submit()">
-                        <option value="">All Users (No Filter)</option>
-                        <?php foreach ($pay_periods as $period): ?>
-                            <option value="<?php echo htmlspecialchars($period['value']); ?>"
-                                    <?php echo ($selected_period === $period['value']) ? 'selected' : ''; ?>>
-                                <?php echo htmlspecialchars($period['label']); ?>
-                            </option>
+                <h2>🏷️ Account Payment Overview</h2>
+            </div>
+            <div class="inline-filter">
+                <label for="account_year">Pay Period:</label>
+                <form method="GET" id="accountPeriodForm">
+                    <?php
+                    // Derive available years and months from generated pay periods
+                    $years = [];
+                    $months = [];
+                    foreach ($pay_periods as $pp) {
+                        // value format: YYYY-MM-DD|YYYY-MM-DD
+                        $parts = explode('|', $pp['value']);
+                        if (count($parts) >= 1) {
+                            $start = $parts[0];
+                            $dt = DateTime::createFromFormat('Y-m-d', $start);
+                            if ($dt) {
+                                $y = $dt->format('Y');
+                                $m = $dt->format('m');
+                                $years[$y] = true;
+                                $months[$m] = $dt->format('F');
+                            }
+                        }
+                    }
+                    krsort($years);
+                    ?>
+
+                    <select id="account_year" name="account_year" onchange="onAccountPeriodChange()">
+                        <option value="">Year</option>
+                        <?php foreach (array_keys($years) as $y): ?>
+                            <option value="<?php echo $y; ?>" <?php echo (isset($_GET['account_year']) && $_GET['account_year']==$y) ? 'selected' : ''; ?>><?php echo $y; ?></option>
                         <?php endforeach; ?>
                     </select>
-                    <?php if ($selected_period): ?>
-                        <a href="?" class="clear-filter" title="Clear Filter">✕</a>
-                    <?php endif; ?>
+
+                    <select id="account_month" name="account_month" onchange="onAccountPeriodChange()" <?php echo empty($_GET['account_year']) ? 'disabled' : ''; ?>>
+                        <option value="">Month</option>
+                        <?php foreach ($months as $mnum => $mname): ?>
+                            <option value="<?php echo $mnum; ?>" <?php echo (isset($_GET['account_month']) && $_GET['account_month']==$mnum) ? 'selected' : ''; ?>><?php echo $mname; ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <?php
+                    // Determine a sensible label for the '16-end' cutoff using selected year/month or current month
+                    $cutoff_label_end = '16-end';
+                    $sel_year = $_GET['account_year'] ?? '';
+                    $sel_month = $_GET['account_month'] ?? '';
+                    if (!empty($sel_year) && !empty($sel_month)) {
+                        // Ensure month is two digits
+                        $mm = str_pad($sel_month, 2, '0', STR_PAD_LEFT);
+                        $dt_last = DateTime::createFromFormat('Y-m-d', "$sel_year-$mm-01");
+                        if ($dt_last) {
+                            $lastDay = $dt_last->format('t');
+                            $cutoff_label_end = '16-' . $lastDay;
+                        }
+                    } else {
+                        // Fallback to current month
+                        $now = new DateTime();
+                        $cutoff_label_end = '16-' . $now->format('t');
+                    }
+                    ?>
+                    <select id="account_cutoff" name="account_cutoff" onchange="onAccountPeriodChange()" <?php echo empty($_GET['account_month']) ? 'disabled' : ''; ?>>
+                        <option value="">Cut Off</option>
+                        <option value="1" <?php echo (isset($_GET['account_cutoff']) && $_GET['account_cutoff']=='1') ? 'selected' : ''; ?>>1-15</option>
+                        <option value="2" <?php echo (isset($_GET['account_cutoff']) && $_GET['account_cutoff']=='2') ? 'selected' : ''; ?>><?php echo htmlspecialchars($cutoff_label_end); ?></option>
+                    </select>
+
+                    <input type="hidden" id="filter_period" name="filter_period" value="<?php echo isset($_GET['filter_period']) ? htmlspecialchars($_GET['filter_period']) : ''; ?>">
                 </form>
             </div>
-            <button type="button" class="btn-toggle" onclick="toggleForm()" id="toggleBtn">
-                <span id="toggleIcon">▼</span> Show Form
-            </button>
         </div>
-        
-        <?php if ($selected_period && empty($users_with_gcash)): ?>
-            <div style="padding: 40px; text-align: center; color: #718096;">
-                <div style="font-size: 48px; margin-bottom: 10px;">✅</div>
-                <h3 style="color: #48bb78; margin-bottom: 10px;">All users have been paid!</h3>
-                <p>All active live sellers have already received payment for this pay period.</p>
-                <a href="?" style="display: inline-block; margin-top: 15px; color: #667eea; text-decoration: none;">
-                    ← Back to all users
-                </a>
+
+        <?php
+        // Prepare account overview data only if a period is selected
+        $accounts_overview = [];
+        if (!empty($filter_start) && !empty($filter_end)) {
+            // Fetch accounts
+            $accStmt = $db->query("SELECT id, name FROM accounts ORDER BY name ASC");
+            $accounts = $accStmt->fetchAll();
+
+            foreach ($accounts as $acc) {
+                // Get members
+                $mStmt = $db->prepare("SELECT user_id FROM account_members WHERE account_id = ?");
+                $mStmt->execute([$acc['id']]);
+                $members = $mStmt->fetchAll(PDO::FETCH_COLUMN);
+
+                $memberCount = count($members);
+                $totalPaycheck = 0.0;
+                $paidAmount = 0.0;
+                $paidCount = 0;
+
+                if ($memberCount > 0) {
+                    // Calculate total earnings for members using attendance and hourly_rate
+                    $in_placeholders = implode(',', array_fill(0, count($members), '?'));
+                    // Build parameters: period_start, period_end, then member ids
+                    $params = array_merge([$filter_start, $filter_end], $members);
+
+                    $sql = "SELECT u.id, u.hourly_rate, 
+                                COALESCE(SUM(a.hours_worked),0) + COALESCE(SUM(o.duration_hours),0) as total_hours
+                            FROM users u
+                            LEFT JOIN attendance a ON a.seller_id = u.id AND a.attendance_date BETWEEN ? AND ? AND a.status = 'approved'
+                            LEFT JOIN overtime o ON o.seller_id = u.id AND o.overtime_date BETWEEN ? AND ? AND o.status = 'approved'
+                            WHERE u.id IN ($in_placeholders)
+                            GROUP BY u.id";
+                    $stmt2 = $db->prepare($sql);
+                    // Add period dates twice (once for attendance, once for overtime)
+                    $params_with_overtime = array_merge([$filter_start, $filter_end, $filter_start, $filter_end], $members);
+                    $stmt2->execute($params_with_overtime);
+                    $rows = $stmt2->fetchAll();
+                    foreach ($rows as $r) {
+                        $hours = floatval($r['total_hours'] ?? 0);
+                        $rate = floatval($r['hourly_rate'] ?? 0);
+                        $totalPaycheck += $hours * $rate;
+                    }
+
+                    // Get payments made for these members in the period
+                    $payParams = $members;
+                    $payParams[] = $filter_start;
+                    $payParams[] = $filter_end;
+                    $in_placeholders2 = implode(',', array_fill(0, count($members), '?'));
+                    $sqlPaid = "SELECT COUNT(*) as cnt, COALESCE(SUM(amount),0) as paid_sum
+                                FROM payment_receipts
+                                WHERE user_id IN ($in_placeholders2)
+                                  AND pay_period_start = ?
+                                  AND pay_period_end = ?
+                                  AND status = 'completed'";
+                    $stmt3 = $db->prepare($sqlPaid);
+                    $stmt3->execute($payParams);
+                    $paidRow = $stmt3->fetch();
+                    $paidCount = intval($paidRow['cnt'] ?? 0);
+                    $paidAmount = floatval($paidRow['paid_sum'] ?? 0);
+                }
+
+                $accounts_overview[] = [
+                    'id' => $acc['id'],
+                    'name' => $acc['name'],
+                    'members' => $memberCount,
+                    'total_paycheck' => round($totalPaycheck, 2),
+                    'paid_amount' => round($paidAmount, 2),
+                    'paid_count' => $paidCount
+                ];
+            }
+        }
+        ?>
+
+        <?php if (empty($filter_start) || empty($filter_end)): ?>
+            <div class="empty-state">
+                <p>Select a pay period above to view account-level pay totals.</p>
             </div>
         <?php else: ?>
-        <form method="POST" enctype="multipart/form-data" class="payment-form" id="paymentForm" style="display: none;">
-            <input type="hidden" name="action" value="add_payment">
-            
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="user_id">Select User *</label>
-                    <select id="user_id" name="user_id" required onchange="updateUserInfo()">
-                        <option value="">-- Select Live Seller --</option>
-                        <?php foreach ($users_with_gcash as $user): ?>
-                            <option value="<?php echo $user['id']; ?>" 
-                                    data-gcash="<?php echo htmlspecialchars($user['gcash_number']); ?>"
-                                    data-name="<?php echo htmlspecialchars($user['gcash_name']); ?>"
-                                    data-qr="<?php echo htmlspecialchars($user['qr_code_image']); ?>">
-                                <?php echo htmlspecialchars($user['full_name']); ?> (@<?php echo htmlspecialchars($user['username']); ?>)
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                    <div id="userGcashInfo" class="gcash-info" style="display: none;">
-                        <small>GCash: <strong id="gcashNumber"></strong> - <strong id="gcashName"></strong></small>
+            <div class="accounts-grid">
+                <?php foreach ($accounts_overview as $ao): ?>
+                    <?php $remaining = max(0, $ao['total_paycheck'] - $ao['paid_amount']); ?>
+                    <div class="account-card">
+                        <div class="account-card-header">
+                            <div class="account-name"><?php echo htmlspecialchars($ao['name']); ?></div>
+                            <div class="account-members">Members: <?php echo $ao['members']; ?></div>
+                        </div>
+                        <div class="account-stats">
+                            <div class="stat-box">
+                                <div class="stat-box-label">TOTAL PAYCHECK:</div>
+                                <div class="stat-box-value">₱<?php echo number_format($ao['total_paycheck'], 2); ?></div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-box-label">PAID:</div>
+                                <div class="stat-box-value">₱<?php echo number_format($ao['paid_amount'], 2); ?> <span class="stat-box-count">(<?php echo $ao['paid_count']; ?>)</span></div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-box-label">REMAINING:</div>    
+                                <div class="stat-box-value">₱<?php echo number_format($remaining, 2); ?></div>
+                            </div>
+                        </div>
+                        <div class="account-progress">
+                            <?php $percent = ($ao['total_paycheck'] > 0) ? min(100, round(($ao['paid_amount'] / $ao['total_paycheck']) * 100)) : 0; ?>
+                            <div class="progress-bar"><div class="progress-fill" style="width: <?php echo $percent; ?>%;"></div></div>
+                            <div class="progress-text"><?php echo $percent; ?>% paid</div>
+                        </div>
                     </div>
-                    <button type="button" id="viewQrBtn" class="btn-view-qr" onclick="viewUserQRCode()" style="display: none;">
-                        <span class="qr-icon">⬜</span> View GCash QR Code
-                    </button>
-                    <img id="qrCodeImage" src="" alt="GCash QR Code" style="display: none;">
-                </div>
-
-                <div class="form-group">
-                    <label for="amount">Amount (₱) *</label>
-                    <input type="number" id="amount" name="amount" 
-                           placeholder="0.00" step="0.01" min="0.01" required readonly
-                           style="background-color: #f0fdf4; font-weight: 700; font-size: 1.1rem; color: #059669;">
-                </div>
+                <?php endforeach; ?>
             </div>
-
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="payment_date">Payment Date *</label>
-                    <input type="date" id="payment_date" name="payment_date" 
-                           value="<?php echo date('Y-m-d'); ?>" required readonly 
-                           style="background-color: #f7fafc; cursor: not-allowed;">
-                </div>
-
-                <div class="form-group">
-                    <label for="reference_number">Reference Number</label>
-                    <input type="text" id="reference_number" name="reference_number" 
-                           placeholder="GCash reference number (optional)" maxlength="100">
-                </div>
-            </div>
-
-            <div class="form-group">
-                <!-- Hidden field to store pay period from filter -->
-                <input type="hidden" id="pay_period" name="pay_period" value="<?php echo htmlspecialchars($selected_period); ?>">
-            </div>
-
-            <div class="form-group">
-                <label for="receipt_image">Receipt Image *</label>
-                <div class="file-upload-wrapper">
-                    <input type="file" id="receipt_image" name="receipt_image" 
-                           accept="image/jpeg,image/jpg,image/png,image/gif" 
-                           required onchange="previewImage(this)">
-                    <div class="file-upload-info">
-                        <span class="upload-icon">📁</span>
-                        <span class="upload-text">Click to select receipt image</span>
-                        <span class="upload-hint">JPG, PNG, GIF (Max 5MB)</span>
-                    </div>
-                </div>
-                <div id="imagePreview" class="image-preview" style="display: none;">
-                    <img id="previewImg" src="" alt="Preview">
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label for="notes">Notes (Optional)</label>
-                <textarea id="notes" name="notes" rows="3" 
-                          placeholder="Add any additional notes about this payment..."></textarea>
-            </div>
-
-            <div class="form-actions">
-                <button type="submit" class="btn-submit">
-                    <span class="btn-icon">💾</span>
-                    Upload Payment Receipt
-                </button>
-                <button type="reset" class="btn-reset">Clear Form</button>
-            </div>
-        </form>
         <?php endif; ?>
     </div>
+
+        <script>
+        function onAccountPeriodChange() {
+            var yearEl = document.getElementById('account_year');
+            var monthEl = document.getElementById('account_month');
+            var cutoffEl = document.getElementById('account_cutoff');
+            var filterInput = document.getElementById('filter_period');
+            if (!yearEl || !monthEl || !cutoffEl || !filterInput) return;
+
+            var y = yearEl.value;
+            var m = monthEl.value;
+            var cutoff = cutoffEl.value;
+
+            // Enable/disable dependent selects
+            monthEl.disabled = !y;
+            if (!y) {
+                monthEl.value = '';
+            }
+            cutoffEl.disabled = !m;
+            if (!m) {
+                cutoffEl.value = '';
+            }
+
+            // Update cutoff label to show actual month end
+            updateCutoffLabel();
+
+            if (!y || !m || !cutoff) {
+                // clear filter if incomplete
+                filterInput.value = '';
+                return;
+            }
+
+            var mm = m.length === 1 ? '0' + m : m;
+            var lastDay = new Date(parseInt(y,10), parseInt(mm,10), 0).getDate();
+            var start, end;
+            if (cutoff === '1') {
+                start = y + '-' + mm + '-01';
+                end = y + '-' + mm + '-15';
+            } else {
+                start = y + '-' + mm + '-16';
+                end = y + '-' + mm + '-' + lastDay;
+            }
+
+            filterInput.value = start + '|' + end;
+
+            // Build new URL preserving other query params
+            var params = new URLSearchParams(window.location.search);
+            if (filterInput.value) {
+                params.set('filter_period', filterInput.value);
+                params.set('account_year', y);
+                params.set('account_month', m);
+                params.set('account_cutoff', cutoff);
+            } else {
+                params.delete('filter_period');
+                params.delete('account_year');
+                params.delete('account_month');
+                params.delete('account_cutoff');
+            }
+            var newUrl = window.location.pathname + (params.toString() ? ('?' + params.toString()) : '');
+
+            // Fetch and replace the accounts overview section via AJAX
+            fetchAndReplaceSection(newUrl, '.accounts-overview-card');
+            // Update browser URL
+            history.pushState(null, '', newUrl);
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            var filterInput = document.getElementById('filter_period');
+            if (!filterInput) return;
+            var filterVal = filterInput.value || '';
+            if (!filterVal) return;
+            var parts = filterVal.split('|');
+            if (parts.length !== 2) return;
+            var start = parts[0];
+            var p = start.split('-');
+            if (p.length < 3) return;
+            var y = p[0];
+            var m = p[1];
+            var d = p[2];
+            var cutoff = (parseInt(d,10) <= 15) ? '1' : '2';
+            var yearEl = document.getElementById('account_year');
+            var monthEl = document.getElementById('account_month');
+            var cutoffEl = document.getElementById('account_cutoff');
+            if (yearEl) yearEl.value = y;
+            if (monthEl) monthEl.value = m;
+            if (cutoffEl) cutoffEl.value = cutoff;
+            // Ensure cutoff label matches selected month/year on load
+            updateCutoffLabel();
+        });
+
+        function updateCutoffLabel() {
+            var yearEl = document.getElementById('account_year');
+            var monthEl = document.getElementById('account_month');
+            var cutoffEl = document.getElementById('account_cutoff');
+            if (!cutoffEl) return;
+
+            var y = yearEl ? yearEl.value : '';
+            var m = monthEl ? monthEl.value : '';
+
+            var optionEnd = cutoffEl.querySelector('option[value="2"]');
+            if (!optionEnd) return;
+
+            if (!y || !m) {
+                optionEnd.textContent = '16-end';
+                return;
+            }
+
+            // Ensure month is two digits
+            var mm = String(m).padStart(2, '0');
+            var lastDay = new Date(parseInt(y,10), parseInt(mm,10), 0).getDate();
+            optionEnd.textContent = '16-' + lastDay;
+        }
+        </script>
+
+    <!-- Upload form removed per request -->
 
     <!-- Payment History -->
     <div class="history-card">
         <div class="history-header-section">
-            <h2>📋 Payment History</h2>
+            <h2>📋 Users Payment Overview</h2>  
             
             <!-- History Filters -->
             <form method="GET" id="historyFilterForm" class="history-filters">
@@ -1320,6 +1497,104 @@ include 'layout/header.php';
     border-collapse: collapse;
 }
 
+/* Accounts overview styles */
+.accounts-overview-card {
+    background: white;
+    border-radius: 16px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.06);
+    margin-bottom: 1.5rem;
+}
+.accounts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1rem;
+}
+.account-card {
+    background: #f8fafc;
+    border: 1px solid #e6edf3;
+    border-radius: 12px;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    min-height: 180px;
+    position: relative;
+    box-sizing: border-box;
+    overflow: visible;
+    box-shadow: 0 6px 18px rgba(15,23,42,0.06);
+}
+.account-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.account-card-header .account-name { font-size: 1.05rem; }
+.account-name {
+    font-weight: 700;
+    color: #111827;
+}
+.account-members {
+    font-size: 0.85rem;
+    color: #6b7280;
+}
+.account-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    align-items: stretch;
+}
+.account-stats, .account-stats > * { min-width: 0; }
+.stat-box {
+    background: white;
+    border-radius: 12px;
+    padding: 0.85rem 1rem;
+    border: 1px solid #eef2f7;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    box-sizing: border-box;
+    min-height: 80px;
+    align-items: flex-start;
+    justify-content: center;
+    box-shadow: 0 4px 10px rgba(15,23,42,0.04);
+}
+.stat-box-label {
+    font-size: 0.78rem;
+    color: #6b7280;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+.stat-box-value {
+    font-size: 1.48rem;
+    font-weight: 900;
+    color: #0f172a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.05;
+}
+.stat-box .stat-box-count { opacity: 0.9; }
+.stat-box-count { display:block; font-size:0.9rem; color:#6b7280; font-weight:700; margin-top:6px; }
+.account-progress { display:flex; flex-direction:column; gap:0.35rem; margin-top:0.75rem; }
+.progress-bar { background:#e6eef8; height:12px; border-radius:8px; overflow:hidden; }
+.progress-fill { height:100%; background:linear-gradient(90deg,#60a5fa,#7c3aed); border-radius:8px; }
+.progress-text { font-size:0.85rem; color:#475569; font-weight:600; }
+
+@media (max-width: 640px) {
+    .accounts-grid {
+        grid-template-columns: 1fr;
+    }
+    .account-card {
+        padding: 0.75rem;
+    }
+    .account-stats {
+        grid-template-columns: 1fr;
+    }
+    .stat-box { padding: 0.5rem; }
+}
+
 .payments-table thead {
     background: #f7fafc;
 }
@@ -1715,6 +1990,34 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+// Helper to fetch a page and replace a selector's element with the new content
+function fetchAndReplaceSection(url, selector) {
+    var container = document.querySelector(selector);
+    if (!container) return;
+
+    // Show a loading state
+    var originalHTML = container.innerHTML;
+    container.innerHTML = '<div class="empty-state"><p>Loading...</p></div>';
+
+    fetch(url, { credentials: 'same-origin' })
+        .then(function(resp) { return resp.text(); })
+        .then(function(htmlText) {
+            var parser = new DOMParser();
+            var doc = parser.parseFromString(htmlText, 'text/html');
+            var newEl = doc.querySelector(selector);
+            if (newEl) {
+                container.replaceWith(newEl);
+            } else {
+                // If selector not found, restore original
+                container.innerHTML = originalHTML;
+            }
+        })
+        .catch(function(err) {
+            console.error('AJAX load failed', err);
+            container.innerHTML = originalHTML;
+        });
+}
+
 function toggleForm() {
     const form = document.getElementById('paymentForm');
     const btn = document.getElementById('toggleBtn');
@@ -1734,8 +2037,8 @@ function updateHistoryFilters() {
     const yearSelect = document.getElementById('history_year');
     const monthSelect = document.getElementById('history_month');
     const periodSelect = document.getElementById('history_period');
-    
-    // When year changes, reset month and period, then submit
+
+    // When year changes, reset month and period
     if (yearSelect.value) {
         monthSelect.disabled = false;
         if (!monthSelect.value) {
@@ -1748,7 +2051,7 @@ function updateHistoryFilters() {
         periodSelect.disabled = true;
         periodSelect.value = '';
     }
-    
+
     // When month changes, enable period
     if (monthSelect.value) {
         periodSelect.disabled = false;
@@ -1756,9 +2059,20 @@ function updateHistoryFilters() {
         periodSelect.disabled = true;
         periodSelect.value = '';
     }
-    
-    // Submit the form to reload with new filters
-    form.submit();
+
+    // Build query params and fetch history card via AJAX
+    var params = new URLSearchParams(window.location.search);
+    if (yearSelect.value) params.set('history_year', yearSelect.value); else params.delete('history_year');
+    if (monthSelect.value) params.set('history_month', monthSelect.value); else params.delete('history_month');
+    if (periodSelect.value) params.set('history_period', periodSelect.value); else params.delete('history_period');
+
+    // Preserve filter_period if present
+    var fp = (new URLSearchParams(window.location.search)).get('filter_period');
+    if (fp) params.set('filter_period', fp);
+
+    var newUrl = window.location.pathname + (params.toString() ? ('?' + params.toString()) : '');
+    fetchAndReplaceSection(newUrl, '.history-card');
+    history.pushState(null, '', newUrl);
 }
 
 function updateUserInfo() {
