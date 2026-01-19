@@ -95,9 +95,7 @@ $current_user = get_logged_in_user();
     <aside class="sidebar">
         <div class="sidebar-header">
             <div class="logo">
-                <div class="logo-icon">
-                    <img src="../tik-tok.png" alt="TikTok" style="width: 28px; height: 28px; object-fit: contain;">
-                </div>
+                <div class="logo-icon">⚙️</div>
                 <span>Admin Panel</span>
             </div>
         </div>      

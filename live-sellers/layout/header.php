@@ -203,9 +203,7 @@ if (!empty($current_user['profile_image'])) {
     <aside class="sidebar">
         <div class="sidebar-header">
             <div class="logo">
-                <div class="logo-icon">
-                    <img src="<?php echo $base; ?>/tik-tok.png" alt="TikTok" style="width: 28px; height: 28px; object-fit: contain;">
-                </div>
+                <div class="logo-icon">🎤</div>
                 <span>Live Seller</span>
             </div>
         </div>

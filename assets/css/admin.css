@@ -103,8 +103,8 @@
 }
 
 .table-row.top-performer {
-    background: linear-gradient(90deg, rgba(255, 215, 0, 0.1), transparent);
-    border-left: 4px solid #ffd700;
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.05), transparent);
+    border-left: 4px solid #666666;
     position: relative;
 }
 
@@ -115,7 +115,7 @@
     top: 0;
     bottom: 0;
     width: 4px;
-    background: linear-gradient(180deg, #ffd700 0%, #ffed4e 100%);
+    background: linear-gradient(180deg, #666666 0%, #888888 100%);
 }
 
 .table-row:last-child {
@@ -143,21 +143,21 @@
 }
 
 .rank-badge.gold {
-    background: linear-gradient(135deg, #ffd700, #ffed4e);
-    color: #b45309;
-    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4);
+    background: linear-gradient(135deg, #3a3a3a, #4a4a4a);
+    color: #ffffff;
+    box-shadow: 0 4px 15px rgba(255, 255, 255, 0.1);
 }
 
 .rank-badge.silver {
-    background: linear-gradient(135deg, #c0c0c0, #e5e5e5);
-    color: #4a5568;
-    box-shadow: 0 4px 15px rgba(192, 192, 192, 0.4);
+    background: linear-gradient(135deg, #2a2a2a, #3a3a3a);
+    color: #ffffff;
+    box-shadow: 0 4px 15px rgba(255, 255, 255, 0.1);
 }
 
 .rank-badge.bronze {
-    background: linear-gradient(135deg, #cd7f32, #d4a574);
+    background: linear-gradient(135deg, #1a1a1a, #2a2a2a);
     color: white;
-    box-shadow: 0 4px 15px rgba(205, 127, 50, 0.4);
+    box-shadow: 0 4px 15px rgba(255, 255, 255, 0.08);
 }
 
 .rank-badge.default {
@@ -174,7 +174,7 @@
 .user-avatar {
     width: 50px;
     height: 50px;
-    background: linear-gradient(135deg, #667eea, #764ba2);
+    background: linear-gradient(135deg, #2a2a2a, #3a3a3a);
     border-radius: 50%;
     display: none !important;
     align-items: center;
@@ -223,8 +223,8 @@
 .account-row .account-members { font-size:0.9rem; color:#bfc6d9; }
 .account-row .account-contrib { font-size:0.85rem; color:#9aa1b8; margin-top:6px; }
 .account-row .account-metrics { text-align:right; min-width:160px; }
-.account-row .account-sales { font-weight:800; color:#7ef08a; font-size:1.05rem; }
-.account-row .account-hours { margin-top:6px; font-weight:700; color:#93d1ff; }
+.account-row .account-sales { font-weight:800; color:#cccccc; font-size:1.05rem; }
+.account-row .account-hours { margin-top:6px; font-weight:700; color:#aaaaaa; }
 .account-actions { display:flex; gap:8px; margin-left:12px; }
 .account-actions form { display:inline-block; }
 .account-edit-form { margin-top:8px; padding:12px; background:rgba(255,255,255,0.02); border-radius:8px; }
@@ -254,8 +254,8 @@
 .account-stats .stat { text-align:right; min-width:110px; }
 .stat-label { font-size:0.75rem; color:#9aa1b8; text-transform:uppercase; letter-spacing:0.6px; }
 .stat-value { font-size:1.15rem; font-weight:800; color:#fff; }
-.stat-value.sales { color: #7ef08a; }
-.stat-value.hours { color: #93d1ff; }
+.stat-value.sales { color: #cccccc; }
+.stat-value.hours { color: #aaaaaa; }
 .stat-value::after { content: ''; }
 .contributors-list { font-size:0.9rem; color:#9aa1b8; padding-top:6px; border-top:1px dashed rgba(255,255,255,0.02); }
 .account-stats-vert { margin-top:8px; display:flex; flex-direction:column; gap:6px; }
@@ -362,7 +362,7 @@
     align-items: center;
     gap: 0.5rem;
     padding: 0.75rem 1.5rem;
-    background: linear-gradient(135deg, #667eea, #764ba2);
+    background: linear-gradient(135deg, #2a2a2a, #3a3a3a);
     border: none;
     border-radius: 12px;
     color: white;
@@ -1059,13 +1059,13 @@
 .admin-layout .sidebar .logo-icon {
     width: 42px;
     height: 42px;
-    background: linear-gradient(135deg, #667eea, #764ba2) !important;
+    background: linear-gradient(135deg, #2a2a2a, #3a3a3a) !important;
     border-radius: 11px;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 1.3rem;
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.25) !important;
+    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1) !important;
     transition: all 0.3s ease;
 }
 
@@ -1169,14 +1169,14 @@
     transform: translateY(-50%);
     width: 4px;
     height: 60%;
-    background: linear-gradient(180deg, #667eea, #764ba2) !important;
+    background: linear-gradient(180deg, #555555, #777777) !important;
     border-radius: 0 4px 4px 0;
-    box-shadow: 0 0 8px rgba(102, 126, 234, 0.3);
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.1);
 }   
 
 .admin-layout .nav-link.active .nav-icon {
     transform: scale(1.05);
-    color: #8b94e7 !important;
+    color: #aaaaaa !important;
 }
 
 .admin-layout .nav-icon {
@@ -1214,7 +1214,7 @@
 .admin-layout .sidebar-footer .user-avatar {
     width: 42px;
     height: 42px;
-    background: linear-gradient(135deg, #667eea, #764ba2) !important;
+    background: linear-gradient(135deg, #2a2a2a, #3a3a3a) !important;
     border-radius: 11px;
     display: flex;
     align-items: center;
@@ -1448,7 +1448,7 @@
     width: 42px;
     height: 42px;
     border-radius: 10px;
-    background: linear-gradient(135deg, #667eea, #764ba2);
+    background: linear-gradient(135deg, #2a2a2a, #3a3a3a);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1534,7 +1534,7 @@
     left: 0;
     right: 0;
     height: 3px;
-    background: linear-gradient(90deg, #667eea, #764ba2, #667eea);
+    background: linear-gradient(90deg, #555555, #777777, #555555);
     background-size: 200% 100%;
     animation: shimmer 3s linear infinite;
 }
@@ -1631,7 +1631,7 @@
     align-items: center;
     gap: 0.5rem;
     padding: 0.9rem 1.75rem;
-    background: linear-gradient(135deg, #667eea, #764ba2);
+    background: linear-gradient(135deg, #2a2a2a, #3a3a3a);
     border: none;
     border-radius: 12px;
     color: white;
@@ -1639,7 +1639,7 @@
     font-weight: 700;
     cursor: pointer;
     transition: all 0.3s ease;
-    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.35);
+    box-shadow: 0 4px 16px rgba(255, 255, 255, 0.1);
     letter-spacing: 0.02em;
 }
 

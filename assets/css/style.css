@@ -1,16 +1,16 @@
 /* Modern TikTok Live Host Agency Styles */
 :root {
-    --primary-color: #ff0050;
-    --secondary-color: #25f4ee;
-    --dark-bg: #161823;
-    --darker-bg: #0a0a0f;
+    --primary-color: #000000;
+    --secondary-color: #1a1a1a;
+    --dark-bg: #000000;
+    --darker-bg: #0a0a0a;
     --light-text: #ffffff;
     --gray-text: #a8a8b3;
-    --card-bg: #1f1f2e;
-    --gradient-primary: linear-gradient(135deg, #ff0050, #ff4081);
-    --gradient-secondary: linear-gradient(135deg, #25f4ee, #00bcd4);
-    --shadow-neon: 0 0 20px rgba(255, 0, 80, 0.3);
-    --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.3);
+    --card-bg: #1a1a1a;
+    --gradient-primary: linear-gradient(135deg, #000000, #333333);
+    --gradient-secondary: linear-gradient(135deg, #1a1a1a, #2a2a2a);
+    --shadow-neon: 0 0 20px rgba(255, 255, 255, 0.2);
+    --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.5);
 }
 
 * {

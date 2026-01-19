@@ -45,19 +45,19 @@
 .live-seller-layout .sidebar .logo-icon {
     width: 42px;
     height: 42px;
-    background: linear-gradient(135deg, #667eea, #764ba2) !important;
+    background: linear-gradient(135deg, #2a2a2a, #3a3a3a) !important;
     border-radius: 11px;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 1.3rem;
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.25) !important;
+    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1) !important;
     transition: all 0.3s ease;
 }
 
 .live-seller-layout .sidebar .logo:hover .logo-icon {
     transform: scale(1.05);
-    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4) !important;
+    box-shadow: 0 6px 20px rgba(255, 255, 255, 0.15) !important;
 }
 
 /* Logo Text */
@@ -161,9 +161,9 @@
     transform: translateY(-50%);
     width: 4px;
     height: 60%;
-    background: linear-gradient(180deg, #667eea, #764ba2) !important;
+    background: linear-gradient(180deg, #555555, #777777) !important;
     border-radius: 0 4px 4px 0;
-    box-shadow: 0 0 8px rgba(102, 126, 234, 0.3);
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.1);
 }
 
 .live-seller-layout .nav-link.active .nav-icon {
@@ -206,11 +206,11 @@
     gap: 0.75rem;
 }
 
-/* User Avatar - Purple-Blue Gradient Tile */
+/* User Avatar - Gray Gradient Tile */
 .live-seller-layout .sidebar-footer .user-avatar {
     width: 42px;
     height: 42px;
-    background: linear-gradient(135deg, #667eea, #764ba2) !important;
+    background: linear-gradient(135deg, #2a2a2a, #3a3a3a) !important;
     border-radius: 11px;
     display: flex;
     align-items: center;
@@ -411,7 +411,7 @@
     width: 36px;
     height: 36px;
     border-radius: 10px;
-    background: linear-gradient(135deg, #667eea, #764ba2);
+    background: linear-gradient(135deg, #2a2a2a, #3a3a3a);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -437,7 +437,7 @@
 
 .live-seller-layout .user-menu.active .dropdown-arrow {
     transform: rotate(180deg);
-    color: #667eea;
+    color: #aaaaaa;
 }
 
 /* User Dropdown Menu */
@@ -510,7 +510,7 @@
     width: 42px;
     height: 42px;
     border-radius: 10px;
-    background: linear-gradient(135deg, #667eea, #764ba2);
+    background: linear-gradient(135deg, #2a2a2a, #3a3a3a);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -621,13 +621,13 @@
 .period-icon {
     width: 50px;
     height: 50px;
-    background: linear-gradient(135deg, #667eea, #764ba2);
+    background: linear-gradient(135deg, #2a2a2a, #3a3a3a);
     border-radius: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 1.5rem;
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1);
     flex-shrink: 0;
 }
 
@@ -717,7 +717,7 @@
 }
 
 .dashboard-welcome {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #2a2a2a 0%, #3a3a3a 100%);
     border-radius: 24px;
     padding: 2.5rem;
     margin-bottom: 3rem;
@@ -974,8 +974,8 @@
 }
 
 .rank-badge.rank-top {
-    background: linear-gradient(45deg, #ffd700, #ffed4e);
-    color: #b45309;
+    background: linear-gradient(45deg, #3a3a3a, #4a4a4a);
+    color: #ffffff;
 }
 
 .crown {
@@ -1088,13 +1088,13 @@
 .congrats-text {
     font-size: 2.5rem;
     font-weight: 900;
-    color: #ffd700;
+    color: #cccccc;
     text-transform: uppercase;
     letter-spacing: 3px;
     margin-bottom: 0.5rem;
     text-shadow: 
-        0 0 10px rgba(255, 215, 0, 0.5),
-        0 0 20px rgba(255, 215, 0, 0.3),
+        0 0 10px rgba(255, 255, 255, 0.1),
+        0 0 20px rgba(255, 255, 255, 0.05),
         0 2px 4px rgba(0, 0, 0, 0.5);
     animation: glow-pulse 2s ease-in-out infinite;
 }
@@ -1271,12 +1271,12 @@
 
 .gold-platform {
     height: 120px;
-    background: linear-gradient(135deg, #ffd700, #ffed4e);
+    background: linear-gradient(135deg, #3a3a3a, #4a4a4a);
 }
 
 .silver-platform {
     height: 80px;
-    background: linear-gradient(135deg, #c0c0c0, #e5e5e5);
+    background: linear-gradient(135deg, #2a2a2a, #3a3a3a);
 }
 
 .bronze-platform {
@@ -1297,8 +1297,8 @@
 }
 
 .platform-base.champion {
-    background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 215, 0, 0.1));
-    color: #ffd700;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+    color: #cccccc;
     font-size: 1.8rem;
 }
 

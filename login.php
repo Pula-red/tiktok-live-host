@@ -50,9 +50,7 @@ $csrf_token = generate_csrf_token();
     <header class="header">
         <nav class="nav">
             <a href="/tiktok-live-host/" class="logo">
-                <div class="logo-icon">
-                    <img src="tik-tok.png" alt="TikTok" style="width: 28px; height: 28px; object-fit: contain;">
-                </div>
+                <div class="logo-icon">🎯</div>
                 <span><?php echo SITE_NAME; ?></span>
             </a>
             <a href="/tiktok-live-host/" class="back-btn">← Back to Home</a>

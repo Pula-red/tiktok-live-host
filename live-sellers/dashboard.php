@@ -365,7 +365,6 @@ include 'layout/header.php';
     <div class="ranking-section">
         <div class="section-header">
             <div class="header-content">
-                <img src="<?php echo $base; ?>/tik-tok.png" alt="TikTok" class="ranking-tiktok-logo">
                 <h2 class="section-title">
                     Live Host Ranking
                 </h2>
